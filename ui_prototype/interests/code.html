@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MindFlow | Interest Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-container": "#fcc493",
+                      "on-primary": "#ffffff",
+                      "tertiary-fixed-dim": "#f3bb8b",
+                      "inverse-primary": "#9dcee0",
+                      "tertiary": "#5d3813",
+                      "on-surface": "#1a1c1b",
+                      "surface-container-low": "#f4f4f2",
+                      "secondary-container": "#e4e2e2",
+                      "surface-container-highest": "#e2e3e1",
+                      "inverse-surface": "#2f3130",
+                      "on-primary-fixed-variant": "#174d5c",
+                      "tertiary-fixed": "#ffdcc0",
+                      "on-secondary-container": "#646464",
+                      "on-tertiary-fixed": "#2e1600",
+                      "background": "#f9f9f7",
+                      "primary-container": "#2c5e6e",
+                      "primary-fixed-dim": "#9dcee0",
+                      "on-error-container": "#93000a",
+                      "on-primary-fixed": "#001f28",
+                      "surface-container-lowest": "#ffffff",
+                      "on-background": "#1a1c1b",
+                      "secondary-fixed": "#e4e2e2",
+                      "surface-container-high": "#e8e8e6",
+                      "error-container": "#ffdad6",
+                      "secondary": "#5e5e5e",
+                      "surface": "#f9f9f7",
+                      "on-secondary-fixed": "#1b1c1c",
+                      "on-primary-container": "#a5d6e8",
+                      "on-secondary": "#ffffff",
+                      "primary-fixed": "#b9eafd",
+                      "primary": "#0d4656",
+                      "surface-bright": "#f9f9f7",
+                      "error": "#ba1a1a",
+                      "outline": "#71787c",
+                      "surface-container": "#eeeeec",
+                      "surface-tint": "#336575",
+                      "inverse-on-surface": "#f1f1ef",
+                      "on-error": "#ffffff",
+                      "on-tertiary-fixed-variant": "#643e19",
+                      "secondary-fixed-dim": "#c8c6c6",
+                      "surface-variant": "#e2e3e1",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-container": "#784f28",
+                      "on-secondary-fixed-variant": "#474747",
+                      "surface-dim": "#dadad8",
+                      "on-surface-variant": "#40484b",
+                      "outline-variant": "#c0c8cb"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "fontFamily": {
+                      "headline": ["Newsreader"],
+                      "body": ["Manrope"],
+                      "label": ["Manrope"]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Manrope', sans-serif; background-color: #f9f9f7; }
+        .serif-text { font-family: 'Newsreader', serif; }
+      </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen">
+<div class="flex min-h-screen">
+<!-- SideNavBar Component -->
+<aside class="hidden lg:flex flex-col h-screen w-64 border-r border-[#c0c8cb]/15 bg-[#f4f4f2] dark:bg-[#1a1c1b] py-8 px-4 sticky top-0">
+<div class="mb-10 px-2">
+<h1 class="font-serif text-xl text-[#1a1c1b] dark:text-[#f9f9f7]">The Digital Atelier</h1>
+<p class="text-[11px] font-['Manrope'] uppercase tracking-widest text-secondary mt-1">Curated Daily Brief</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-[#5e5e5e] dark:text-[#c0c8cb] hover:bg-[#e8e8e6] dark:hover:bg-[#2c5e6e]/10 hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-['Manrope'] uppercase tracking-widest text-[11px]">Briefing</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-[#e2e3e1] dark:bg-[#2c5e6e]/20 text-[#0d4656] dark:text-[#f9f9f7] rounded-lg font-bold" href="#">
+<span class="material-symbols-outlined" data-icon="label_important" style="font-variation-settings: 'FILL' 1;">label_important</span>
+<span class="font-['Manrope'] uppercase tracking-widest text-[11px]">Interests</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#5e5e5e] dark:text-[#c0c8cb] hover:bg-[#e8e8e6] dark:hover:bg-[#2c5e6e]/10 hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="rss_feed">rss_feed</span>
+<span class="font-['Manrope'] uppercase tracking-widest text-[11px]">Sources</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#5e5e5e] dark:text-[#c0c8cb] hover:bg-[#e8e8e6] dark:hover:bg-[#2c5e6e]/10 hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings_suggest">settings_suggest</span>
+<span class="font-['Manrope'] uppercase tracking-widest text-[11px]">Settings</span>
+</a>
+</nav>
+<div class="mt-auto space-y-4 px-2">
+<button class="w-full py-3 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-lg text-sm font-bold flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                    New Insight
+                </button>
+<div class="pt-6 border-t border-outline-variant/15 flex flex-col gap-2">
+<a class="flex items-center gap-2 text-secondary text-[11px] uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-base" data-icon="help_outline">help_outline</span> Help
+                    </a>
+<a class="flex items-center gap-2 text-secondary text-[11px] uppercase tracking-widest" href="#">
+<span class="material-symbols-outlined text-base" data-icon="policy">policy</span> Privacy
+                    </a>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="flex-1 min-w-0">
+<!-- TopNavBar Component -->
+<header class="bg-[#f9f9f7]/80 dark:bg-[#1a1c1b]/80 backdrop-blur-xl sticky top-0 z-50">
+<div class="flex justify-between items-center w-full px-8 py-4 max-w-screen-2xl mx-auto">
+<div class="flex items-center gap-8">
+<span class="font-['Newsreader'] italic text-2xl text-[#1a1c1b] dark:text-[#f9f9f7]">MindFlow</span>
+<nav class="hidden md:flex gap-6">
+<a class="text-[#5e5e5e] dark:text-[#c0c8cb] font-sans hover:text-[#0d4656] transition-colors" href="#">Briefing</a>
+<a class="text-[#0d4656] dark:text-[#2c5e6e] font-bold border-b-2 border-[#0d4656] pb-1" href="#">Interests</a>
+<a class="text-[#5e5e5e] dark:text-[#c0c8cb] font-sans hover:text-[#0d4656] transition-colors" href="#">Sources</a>
+<a class="text-[#5e5e5e] dark:text-[#c0c8cb] font-sans hover:text-[#0d4656] transition-colors" href="#">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden sm:block">
+<input class="bg-surface-container-low border-none rounded-full px-4 py-1.5 text-sm w-64 focus:ring-1 focus:ring-primary" placeholder="Search insights..." type="text"/>
+</div>
+<span class="material-symbols-outlined text-primary cursor-pointer" data-icon="account_circle">account_circle</span>
+</div>
+</div>
+</header>
+<div class="max-w-6xl mx-auto px-8 py-12">
+<!-- Hero Header -->
+<div class="mb-16">
+<h2 class="serif-text text-5xl md:text-6xl text-on-surface mb-4">Interest Management</h2>
+<p class="text-secondary font-body max-w-2xl leading-relaxed">Refine the architectural core of your daily digest. Weight your passions, adopt new perspectives, and prune the noise.</p>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+<!-- Analytics Summary (3 Columns) -->
+<div class="md:col-span-4 bg-surface-container-low p-8 rounded-xl flex flex-col justify-between">
+<div>
+<span class="font-label text-[11px] uppercase tracking-widest text-secondary">Weekly Focus</span>
+<h3 class="serif-text text-3xl mt-4 mb-8">Deep Resonance</h3>
+<div class="space-y-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="psychology">psychology</span>
+</div>
+<div>
+<p class="text-sm font-bold">Artificial Intelligence</p>
+<p class="text-xs text-secondary">42 articles read</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-tertiary-container/10 flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined" data-icon="eco">eco</span>
+</div>
+<div>
+<p class="text-sm font-bold">Climate Solutions</p>
+<p class="text-xs text-secondary">18 deep dives</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="biotech">biotech</span>
+</div>
+<div>
+<p class="text-sm font-bold">BioTechnology</p>
+<p class="text-xs text-secondary">Trending upwards</p>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-12">
+<img class="w-full h-32 object-cover rounded-lg" data-alt="Abstract digital visualization of neural connections with soft blue and green glowing lights on dark background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6xqMZq_WT0WAAL0fPZbCyJSpQzcHO87aIKjw_r1m-Ye15pPrZbjlMmV5mciuh4v8SAvAc2pLL_yX9YSLdsqSummCGsGSFviYBVNCyfGa-O3RWBJlGhLUc2Xdtnao4RIar1-aHTh2ACw3Q34cnEFn9NRWzIaEYilh617oal_c54NEuxq69-TnuCqe0MvIdzXgUscDks1nGUds2sjO4HCncoaQg2IFBUK-9aUAZzoMAXyaJdSy-ERQ8v98YO4yMSF0ABp5-JEKZenpJ"/>
+</div>
+</div>
+<!-- Active Interests Cloud (8 Columns) -->
+<div class="md:col-span-8 space-y-8">
+<div class="bg-surface-container-lowest border border-outline-variant/10 p-8 rounded-xl">
+<div class="flex justify-between items-center mb-8">
+<h3 class="serif-text text-2xl">Active Interests</h3>
+<button class="flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-widest hover:underline">
+<span class="material-symbols-outlined text-sm" data-icon="add_circle">add_circle</span> Add Interest
+                                </button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<!-- Interest Card 1 -->
+<div class="p-4 rounded-lg bg-surface hover:bg-surface-container-high transition-colors group">
+<div class="flex justify-between items-start mb-3">
+<span class="font-bold text-sm">Generative Art</span>
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-sm cursor-pointer text-secondary hover:text-tertiary" data-icon="ac_unit">ac_unit</span>
+<span class="material-symbols-outlined text-sm cursor-pointer text-secondary hover:text-error" data-icon="delete">delete</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[85%]"></div>
+</div>
+<div class="flex justify-between mt-2">
+<span class="text-[10px] text-secondary uppercase tracking-tighter">Strength: 85%</span>
+<span class="text-[10px] text-secondary uppercase tracking-tighter">Daily Priority</span>
+</div>
+</div>
+<!-- Interest Card 2 -->
+<div class="p-4 rounded-lg bg-surface hover:bg-surface-container-high transition-colors group">
+<div class="flex justify-between items-start mb-3">
+<span class="font-bold text-sm">Urbanism</span>
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-sm cursor-pointer text-secondary hover:text-tertiary" data-icon="ac_unit">ac_unit</span>
+<span class="material-symbols-outlined text-sm cursor-pointer text-secondary hover:text-error" data-icon="delete">delete</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[40%]"></div>
+</div>
+<div class="flex justify-between mt-2">
+<span class="text-[10px] text-secondary uppercase tracking-tighter">Strength: 40%</span>
+<span class="text-[10px] text-secondary uppercase tracking-tighter">Background</span>
+</div>
+</div>
+<!-- Interest Card 3 -->
+<div class="p-4 rounded-lg bg-surface-container-low group border-l-4 border-primary">
+<div class="flex justify-between items-start mb-3">
+<span class="font-bold text-sm">Macro Economics</span>
+<div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-sm cursor-pointer text-secondary hover:text-tertiary" data-icon="ac_unit">ac_unit</span>
+<span class="material-symbols-outlined text-sm cursor-pointer text-secondary hover:text-error" data-icon="delete">delete</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[65%]"></div>
+</div>
+<div class="flex justify-between mt-2">
+<span class="text-[10px] text-secondary uppercase tracking-tighter">Strength: 65%</span>
+<span class="text-[10px] text-secondary uppercase tracking-tighter">Main Channel</span>
+</div>
+</div>
+<!-- Interest Card 4 (Frozen) -->
+<div class="p-4 rounded-lg bg-surface-container-highest/50 opacity-60 group border border-dashed border-outline-variant">
+<div class="flex justify-between items-start mb-3">
+<span class="font-bold text-sm italic">Cyber-security</span>
+<div class="flex gap-2 opacity-100">
+<span class="material-symbols-outlined text-sm cursor-pointer text-primary" data-icon="ac_unit" style="font-variation-settings: 'FILL' 1;">ac_unit</span>
+</div>
+</div>
+<div class="w-full bg-surface-container-highest h-1 rounded-full overflow-hidden">
+<div class="bg-secondary h-full w-[0%]"></div>
+</div>
+<div class="flex justify-between mt-2">
+<span class="text-[10px] text-secondary uppercase tracking-tighter">Status: Frozen</span>
+<span class="text-[10px] text-secondary uppercase tracking-tighter">Tap to Thaw</span>
+</div>
+</div>
+</div>
+</div>
+<!-- System Suggestions -->
+<div class="bg-tertiary-container/5 border border-tertiary/10 p-8 rounded-xl relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-6xl" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<h3 class="serif-text text-2xl mb-2 text-tertiary">Emergent Patterns</h3>
+<p class="text-sm text-on-surface-variant mb-6">AI detected these recurring themes in your reading history. Should we elevate them?</p>
+<div class="flex flex-wrap gap-4">
+<!-- Suggestion Tag 1 -->
+<div class="bg-surface-container-lowest px-4 py-3 rounded-xl flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex flex-col">
+<span class="font-bold text-sm">Quantum Computing</span>
+<span class="text-[10px] text-secondary">Matched via: Computing, Physics</span>
+</div>
+<button class="ml-2 bg-primary text-on-primary text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded">Adopt</button>
+</div>
+<!-- Suggestion Tag 2 -->
+<div class="bg-surface-container-lowest px-4 py-3 rounded-xl flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex flex-col">
+<span class="font-bold text-sm">Minimalist Arch.</span>
+<span class="text-[10px] text-secondary">Matched via: Urbanism, Design</span>
+</div>
+<button class="ml-2 bg-primary text-on-primary text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded">Adopt</button>
+</div>
+<!-- Suggestion Tag 3 -->
+<div class="bg-surface-container-lowest px-4 py-3 rounded-xl flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+<div class="flex flex-col">
+<span class="font-bold text-sm">Vertical Farming</span>
+<span class="text-[10px] text-secondary">Matched via: Climate, Food Systems</span>
+</div>
+<button class="ml-2 bg-primary text-on-primary text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded">Adopt</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Control Section -->
+<div class="mt-16 pt-12 border-t border-outline-variant/10 grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="tune">tune</span>
+<div>
+<h4 class="font-bold text-sm mb-1">Global Weighting</h4>
+<p class="text-xs text-secondary">Adjust how aggressive the AI is in finding new topics versus reinforcing existing ones.</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="history">history</span>
+<div>
+<h4 class="font-bold text-sm mb-1">Evolution History</h4>
+<p class="text-xs text-secondary">See how your interests have shifted over the last 6 months.</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="export_notes">export_notes</span>
+<div>
+<h4 class="font-bold text-sm mb-1">Data Portability</h4>
+<p class="text-xs text-secondary">Download your semantic profile for use in other research tools.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Mobile Navigation (BottomNavBar Component Logic) -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-surface-container-lowest border-t border-outline-variant/10 flex justify-around py-3 px-4 z-[100]">
+<a class="flex flex-col items-center gap-1 text-secondary" href="#">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+<span class="text-[10px] font-label">Brief</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined" data-icon="label_important" style="font-variation-settings: 'FILL' 1;">label_important</span>
+<span class="text-[10px] font-label font-bold">Interests</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-secondary" href="#">
+<span class="material-symbols-outlined" data-icon="rss_feed">rss_feed</span>
+<span class="text-[10px] font-label">Sources</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-secondary" href="#">
+<span class="material-symbols-outlined" data-icon="settings_suggest">settings_suggest</span>
+<span class="text-[10px] font-label">Settings</span>
+</a>
+</nav>
+</body></html>

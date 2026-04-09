@@ -378,6 +378,8 @@ def get_content_zone(tag_weight: float) -> str:
 
 ## 五、UI/UX 设计规格
 
+详细统一规范见：[2026-04-09-ui-design-guidelines.md](./2026-04-09-ui-design-guidelines.md)
+
 ### 5.1 设计定位
 
 | 维度 | 决策 |

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>MindFlow | Daily Briefing</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;family=Manrope:wght@200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#fcc493",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#f3bb8b",
+                        "inverse-primary": "#9dcee0",
+                        "tertiary": "#5d3813",
+                        "on-surface": "#1a1c1b",
+                        "surface-container-low": "#f4f4f2",
+                        "secondary-container": "#e4e2e2",
+                        "surface-container-highest": "#e2e3e1",
+                        "inverse-surface": "#2f3130",
+                        "on-primary-fixed-variant": "#174d5c",
+                        "tertiary-fixed": "#ffdcc0",
+                        "on-secondary-container": "#646464",
+                        "on-tertiary-fixed": "#2e1600",
+                        "background": "#f9f9f7",
+                        "primary-container": "#2c5e6e",
+                        "primary-fixed-dim": "#9dcee0",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed": "#001f28",
+                        "surface-container-lowest": "#ffffff",
+                        "on-background": "#1a1c1b",
+                        "secondary-fixed": "#e4e2e2",
+                        "surface-container-high": "#e8e8e6",
+                        "error-container": "#ffdad6",
+                        "secondary": "#5e5e5e",
+                        "surface": "#f9f9f7",
+                        "on-secondary-fixed": "#1b1c1c",
+                        "on-primary-container": "#a5d6e8",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#b9eafd",
+                        "primary": "#0d4656",
+                        "surface-bright": "#f9f9f7",
+                        "error": "#ba1a1a",
+                        "outline": "#71787c",
+                        "surface-container": "#eeeeec",
+                        "surface-tint": "#336575",
+                        "inverse-on-surface": "#f1f1ef",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#643e19",
+                        "secondary-fixed-dim": "#c8c6c6",
+                        "surface-variant": "#e2e3e1",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#784f28",
+                        "on-secondary-fixed-variant": "#474747",
+                        "surface-dim": "#dadad8",
+                        "on-surface-variant": "#40484b",
+                        "outline-variant": "#c0c8cb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Newsreader"],
+                        "body": ["Manrope"],
+                        "label": ["Manrope"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; }
+        .font-serif { font-family: 'Newsreader', serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface flex min-h-screen">
+<aside class="hidden lg:flex flex-col h-screen w-64 border-r border-[#c0c8cb]/15 bg-[#f4f4f2] dark:bg-[#1a1c1b] py-8 px-4 fixed left-0 top-0 overflow-y-auto">
+<div class="mb-12 px-2">
+<h1 class="font-serif text-xl text-[#1a1c1b] dark:text-[#f9f9f7]">The Digital Atelier</h1>
+<p class="font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e] mt-1">Curated Daily Brief</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 bg-[#e2e3e1] dark:bg-[#2c5e6e]/20 text-[#0d4656] dark:text-[#f9f9f7] rounded-lg font-bold transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-['Manrope'] uppercase tracking-widest text-[11px]">Briefing</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-[#5e5e5e] dark:text-[#c0c8cb] hover:bg-[#e8e8e6] dark:hover:bg-[#2c5e6e]/10 transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined" data-icon="label_important">label_important</span>
+<span class="font-['Manrope'] uppercase tracking-widest text-[11px]">Interests</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-[#5e5e5e] dark:text-[#c0c8cb] hover:bg-[#e8e8e6] dark:hover:bg-[#2c5e6e]/10 transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined" data-icon="rss_feed">rss_feed</span>
+<span class="font-['Manrope'] uppercase tracking-widest text-[11px]">Sources</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-[#5e5e5e] dark:text-[#c0c8cb] hover:bg-[#e8e8e6] dark:hover:bg-[#2c5e6e]/10 transition-transform hover:translate-x-1" href="#">
+<span class="material-symbols-outlined" data-icon="settings_suggest">settings_suggest</span>
+<span class="font-['Manrope'] uppercase tracking-widest text-[11px]">Settings</span>
+</a>
+</nav>
+<div class="mt-8 px-2">
+<button class="w-full bg-gradient-to-br from-[#0d4656] to-[#2c5e6e] text-on-primary py-3 rounded text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                New Insight
+            </button>
+</div>
+<div class="mt-auto pt-8 border-t border-[#c0c8cb]/15 flex flex-col gap-2">
+<a class="flex items-center gap-3 px-3 py-1 text-[#5e5e5e] dark:text-[#c0c8cb] text-[11px] uppercase tracking-widest hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="help_outline">help_outline</span>
+                Help
+            </a>
+<a class="flex items-center gap-3 px-3 py-1 text-[#5e5e5e] dark:text-[#c0c8cb] text-[11px] uppercase tracking-widest hover:translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="policy">policy</span>
+                Privacy
+            </a>
+<div class="flex items-center gap-3 px-3 mt-4">
+<img alt="Profile" class="w-8 h-8 rounded-full object-cover" data-alt="close-up portrait of a thoughtful man in a light linen shirt with a neutral soft studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAoKiSz32xE-WqxGkGGa-rqvdbu-VgysiAvx285zLS5xWFOzT5pAnEySUVFBXp-4r7_9XsS8X37WKtU0Z6NUiGTKfkFwyDn0zNtUoXd1-hOeXqrpsLouj1IFuRGijjnaAI2C4drznKtsawbXuw5V5Fq6EjXgUc0QYOsIf83StMIGB9SWgAcCnPD46y5uKQOue6BLlFDyUn1qaZrL7xvNRIBQaoVhAiDaiVcjbj84U42QbcXEBS0GeOnhSkVJIy0ySET0zTjN4Xmqzqd"/>
+<div class="overflow-hidden">
+<p class="text-xs font-bold truncate">Julian Thorne</p>
+<p class="text-[10px] text-secondary truncate">Curator Tier</p>
+</div>
+</div>
+</div>
+</aside>
+<main class="flex-1 lg:ml-64 p-8 lg:p-16 max-w-7xl mx-auto w-full">
+<header class="mb-20">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-outline-variant/15 pb-8">
+<div>
+<p class="font-['Manrope'] uppercase tracking-[0.2em] text-xs text-secondary mb-4">Monday, October 21st, 2024</p>
+<h2 class="font-serif text-6xl md:text-8xl tracking-tight leading-none mb-6">The Morning <br/><span class="italic text-primary">Briefing</span></h2>
+<p class="max-w-xl text-lg text-on-surface-variant leading-relaxed">
+                        Good morning, Julian. Your digital atelier has synthesized 42 sources into three core insights. The tension between synthetic creativity and organic copyright remains the dominant theme today.
+                    </p>
+</div>
+<div class="flex items-center gap-4 bg-surface-container-low p-2 rounded-full px-6 py-3 border border-outline-variant/10">
+<button class="material-symbols-outlined text-secondary hover:text-primary transition-colors" data-icon="chevron_left">chevron_left</button>
+<span class="font-bold text-sm tracking-widest uppercase">Oct 21</span>
+<button class="material-symbols-outlined text-secondary hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</button>
+<button class="material-symbols-outlined ml-4 text-primary" data-icon="calendar_today">calendar_today</button>
+</div>
+</div>
+</header>
+<section class="mb-24">
+<div class="flex items-center gap-4 mb-12">
+<div class="w-1 h-8 bg-primary"></div>
+<h3 class="font-serif text-3xl italic">Main Channel</h3>
+</div>
+<div class="grid grid-cols-1 gap-16">
+<article class="group relative bg-surface-container-low rounded-xl p-8 lg:p-12 transition-all hover:bg-surface-container-high shadow-[0_12px_40px_rgba(26,28,27,0.03)] border border-outline-variant/5">
+<div class="flex flex-col lg:flex-row gap-12">
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-6">
+<span class="bg-primary/10 text-primary px-3 py-1 text-[10px] uppercase font-bold tracking-widest rounded-full">Core Insight</span>
+<span class="text-on-surface-variant text-[10px] uppercase tracking-widest">8 min read</span>
+</div>
+<h4 class="font-serif text-4xl mb-6 leading-tight group-hover:text-primary transition-colors">The Architect's Dilemma: Modular Living in Hyper-Urban Environments</h4>
+<p class="text-on-surface-variant text-lg leading-relaxed mb-8">
+                                As global populations densify, the concept of the 'permanent home' is evolving into 'functional nodes'. Data suggests a 40% increase in modular architectural inquiries among Gen Z urbanists. This shift challenges traditional property laws and the psychological need for rootedness.
+                            </p>
+<div class="mt-8 bg-surface-container-lowest/50 p-6 rounded-lg border border-outline-variant/10">
+<details class="group/dialectical">
+<summary class="flex items-center justify-between cursor-pointer list-none">
+<span class="font-['Manrope'] uppercase tracking-widest text-[11px] font-bold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="psychology">psychology</span>
+                                            Dialectical Analysis
+                                        </span>
+<span class="material-symbols-outlined transition-transform group-open/dialectical:rotate-180" data-icon="expand_more">expand_more</span>
+</summary>
+<div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+<div>
+<p class="font-bold mb-2 text-primary uppercase text-[10px] tracking-widest">Thesis (Pros)</p>
+<p class="text-on-surface-variant">Unprecedented flexibility for a nomadic workforce; significant reduction in construction waste through industrial standardization.</p>
+</div>
+<div>
+<p class="font-bold mb-2 text-error uppercase text-[10px] tracking-widest">Antithesis (Cons)</p>
+<p class="text-on-surface-variant">Erosion of local architectural vernacular; potential for 'communal isolation' in transient living structures.</p>
+</div>
+<div>
+<p class="font-bold mb-2 text-tertiary uppercase text-[10px] tracking-widest">Synthesis (Extensions)</p>
+<p class="text-on-surface-variant">Integrating modular design with bioregional materials to anchor globalized living in local ecosystems.</p>
+</div>
+</div>
+</details>
+</div>
+</div>
+<div class="lg:w-1/3">
+<img alt="Architecture" class="w-full h-80 object-cover rounded shadow-md grayscale hover:grayscale-0 transition-all duration-700" data-alt="minimalist modern building facade with repetitive geometric concrete patterns and deep dramatic shadows in late afternoon light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuClfy4V_ozZymeqCV4DwyTOEPDe5lI7NUN2s3Rlu03bp_5R5g3V8nVnF9SqU65bRP62QcTGKEQxvV-Qzb9Csfg4YZyB7uz4EtP2aiNeZRfklohZfxki-W5pN-g0MULYa9DQhez2nBEu0ouiqpu1tMVfX9b5UclI-C2z8JrkStXfYIxZ7zDLZZKxkyFzZJU-J3PG78J_dBBUeC9_0cyqTR05oPdp3Q9VxmzX4ax9aD-AgUk7xpQyWm9nlIcrUmaBogQSPd7rimnNkXif"/>
+<div class="mt-6 flex items-center justify-between">
+<div class="flex gap-4">
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="thumb_up">thumb_up</span>
+</button>
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="thumb_down">thumb_down</span>
+</button>
+</div>
+<a class="text-[10px] uppercase font-bold tracking-widest text-secondary hover:text-primary transition-colors flex items-center gap-1 border-b border-secondary/20 hover:border-primary/40 pb-1" href="#">
+                                    Read Source <span class="material-symbols-outlined text-xs" data-icon="arrow_outward">arrow_outward</span>
+</a>
+</div>
+</div>
+</div>
+</article>
+<article class="group relative bg-surface-container-low rounded-xl p-8 lg:p-12 transition-all hover:bg-surface-container-high shadow-[0_12px_40px_rgba(26,28,27,0.03)] border border-outline-variant/5">
+<div class="flex flex-col lg:flex-row-reverse gap-12">
+<div class="flex-1">
+<div class="flex items-center gap-3 mb-6">
+<span class="bg-primary/10 text-primary px-3 py-1 text-[10px] uppercase font-bold tracking-widest rounded-full">Societal Shift</span>
+<span class="text-on-surface-variant text-[10px] uppercase tracking-widest">12 min read</span>
+</div>
+<h4 class="font-serif text-4xl mb-6 leading-tight group-hover:text-primary transition-colors">The Quiet Bloom of Post-Digital Nostalgia</h4>
+<p class="text-on-surface-variant text-lg leading-relaxed mb-8">
+                                There is a growing counter-movement against hyper-automation. Hand-bound books, vinyl records, and film photography are seeing a 25% YoY increase in sales. This is not just a trend, but a neurological recalibration towards tactile reality.
+                            </p>
+<div class="mt-8 bg-surface-container-lowest/50 p-6 rounded-lg border border-outline-variant/10">
+<details class="group/dialectical">
+<summary class="flex items-center justify-between cursor-pointer list-none">
+<span class="font-['Manrope'] uppercase tracking-widest text-[11px] font-bold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="psychology">psychology</span>
+                                            Dialectical Analysis
+                                        </span>
+<span class="material-symbols-outlined transition-transform group-open/dialectical:rotate-180" data-icon="expand_more">expand_more</span>
+</summary>
+<div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+<div>
+<p class="font-bold mb-2 text-primary uppercase text-[10px] tracking-widest">Observation</p>
+<p class="text-on-surface-variant">The sensory 'friction' of analog formats creates deeper cognitive retention compared to frictionless streaming.</p>
+</div>
+<div>
+<p class="font-bold mb-2 text-error uppercase text-[10px] tracking-widest">Complication</p>
+<p class="text-on-surface-variant">The high entry cost of analog hobbies creates a 'tactile class' divide between physical and digital luxury.</p>
+</div>
+<div>
+<p class="font-bold mb-2 text-tertiary uppercase text-[10px] tracking-widest">Implication</p>
+<p class="text-on-surface-variant">Future AI interfaces may intentionally introduce 'haptic friction' to emulate the rewards of physical labor.</p>
+</div>
+</div>
+</details>
+</div>
+</div>
+<div class="lg:w-1/3">
+<img alt="Analog" class="w-full h-80 object-cover rounded shadow-md grayscale hover:grayscale-0 transition-all duration-700" data-alt="close-up of a vintage film camera on a dark wood desk with a single soft lamp light and warm shadows" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC12Ah1ozsOnqaZAIXvwSWZCFdCZNEO7ovE9epkaJSVfVb5EfMbUlK2Dc7TjIHYKUTXSK8hvlDkK6M8WHndQMBgvijz3wDCASgQoCrFVbPmkXD6Mc-KNctc0qsURbGmaqkJAkDe74cdkjMaaot4tGLjIVHmLRbUcmUl8X7K3o5-Jt8a6hRZ4Jd7sUt1cl-OmKsd21wV2-oxTT0VrXBJu5l0-Mv6ICQxoLoi-2NBwWO6Z1DKVkZzSvUQdmZ1Is3yCUJrXBSZRP8CZpt1"/>
+<div class="mt-6 flex items-center justify-between">
+<div class="flex gap-4">
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="thumb_up">thumb_up</span>
+</button>
+<button class="flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-lg" data-icon="thumb_down">thumb_down</span>
+</button>
+</div>
+<a class="text-[10px] uppercase font-bold tracking-widest text-secondary hover:text-primary transition-colors flex items-center gap-1 border-b border-secondary/20 hover:border-primary/40 pb-1" href="#">
+                                    Read Source <span class="material-symbols-outlined text-xs" data-icon="arrow_outward">arrow_outward</span>
+</a>
+</div>
+</div>
+</div>
+</article>
+</div>
+</section>
+<section class="mb-24">
+<div class="flex items-center justify-between mb-12">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-secondary" data-icon="explore">explore</span>
+<h3 class="font-serif text-3xl italic">Exploration Zone</h3>
+</div>
+<button class="text-[10px] uppercase font-bold tracking-widest text-secondary hover:text-primary transition-colors border-b border-secondary/20 pb-1">View All Matches</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<div class="bg-surface-container-low p-6 rounded border border-outline-variant/10 hover:translate-y-[-4px] transition-transform">
+<span class="text-[10px] uppercase font-bold tracking-widest text-tertiary bg-tertiary-fixed px-2 py-0.5 rounded-full mb-4 inline-block">Emerging Match</span>
+<h5 class="font-serif text-xl mb-3">Bio-Luminescent Lighting: The Future of Interiority?</h5>
+<p class="text-sm text-on-surface-variant mb-6 line-clamp-3">Synthesizing algae with architecture to create light that feeds on carbon. Still niche, but gaining traction in boutique hotels.</p>
+<div class="flex justify-between items-center mt-auto">
+<span class="text-[10px] uppercase tracking-widest text-secondary">Tech • 4m read</span>
+<button class="material-symbols-outlined text-secondary hover:text-primary" data-icon="add_circle">add_circle</button>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded border border-outline-variant/10 hover:translate-y-[-4px] transition-transform">
+<span class="text-[10px] uppercase font-bold tracking-widest text-tertiary bg-tertiary-fixed px-2 py-0.5 rounded-full mb-4 inline-block">Tangent</span>
+<h5 class="font-serif text-xl mb-3">The Stoic Response to Algorithm Fatigue</h5>
+<p class="text-sm text-on-surface-variant mb-6 line-clamp-3">Reapplying Seneca's letters to modern notification management. A psychological framework for digital peace.</p>
+<div class="flex justify-between items-center mt-auto">
+<span class="text-[10px] uppercase tracking-widest text-secondary">Philosophy • 6m read</span>
+<button class="material-symbols-outlined text-secondary hover:text-primary" data-icon="add_circle">add_circle</button>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded border border-outline-variant/10 hover:translate-y-[-4px] transition-transform">
+<span class="text-[10px] uppercase font-bold tracking-widest text-tertiary bg-tertiary-fixed px-2 py-0.5 rounded-full mb-4 inline-block">Speculative</span>
+<h5 class="font-serif text-xl mb-3">Vertical Farming in Abandoned High-Rises</h5>
+<p class="text-sm text-on-surface-variant mb-6 line-clamp-3">A feasibility study on repurposing commercial real estate for hyper-local food production in Chicago.</p>
+<div class="flex justify-between items-center mt-auto">
+<span class="text-[10px] uppercase tracking-widest text-secondary">Urbanism • 10m read</span>
+<button class="material-symbols-outlined text-secondary hover:text-primary" data-icon="add_circle">add_circle</button>
+</div>
+</div>
+</div>
+</section>
+<section class="mb-32">
+<div class="bg-tertiary-container text-on-tertiary p-12 rounded-xl relative overflow-hidden">
+<div class="absolute top-0 right-0 w-64 h-64 bg-tertiary opacity-10 rounded-full translate-x-32 translate-y-[-32px]"></div>
+<div class="relative z-10">
+<div class="flex items-center gap-4 mb-8">
+<span class="material-symbols-outlined text-on-tertiary-container" data-icon="auto_fix_high" style="font-variation-settings: 'FILL' 1;">auto_fix_high</span>
+<h3 class="font-serif text-3xl italic">Surprise Box</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<div class="bg-white/5 backdrop-blur-md p-6 rounded border border-white/10 hover:bg-white/10 transition-colors cursor-pointer">
+<h6 class="font-serif text-lg mb-2">Ikigai in the Age of AI</h6>
+<p class="text-xs opacity-70 mb-4 uppercase tracking-widest">Serendipity #01</p>
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</div>
+<div class="bg-white/5 backdrop-blur-md p-6 rounded border border-white/10 hover:bg-white/10 transition-colors cursor-pointer">
+<h6 class="font-serif text-lg mb-2">The Aesthetics of Brutalism</h6>
+<p class="text-xs opacity-70 mb-4 uppercase tracking-widest">Serendipity #02</p>
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</div>
+<div class="bg-white/5 backdrop-blur-md p-6 rounded border border-white/10 hover:bg-white/10 transition-colors cursor-pointer">
+<h6 class="font-serif text-lg mb-2">Music Theory in Fractals</h6>
+<p class="text-xs opacity-70 mb-4 uppercase tracking-widest">Serendipity #03</p>
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</div>
+<div class="bg-white/5 backdrop-blur-md p-6 rounded border border-white/10 hover:bg-white/10 transition-colors cursor-pointer">
+<h6 class="font-serif text-lg mb-2">Ancient Fermentation Rituals</h6>
+<p class="text-xs opacity-70 mb-4 uppercase tracking-widest">Serendipity #04</p>
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<div class="mt-12 text-center">
+<p class="font-['Manrope'] uppercase tracking-[0.3em] text-[10px] opacity-60">Randomly selected from 1,200 non-matched interests</p>
+</div>
+</div>
+</div>
+</section>
+<footer class="mt-32 pb-16 border-t border-outline-variant/10 pt-16 flex flex-col md:flex-row justify-between items-start gap-12">
+<div class="max-w-sm">
+<h2 class="font-serif text-2xl italic mb-4 text-primary">MindFlow</h2>
+<p class="text-sm text-on-surface-variant leading-relaxed">A digital atelier for the discerning mind. Synthesizing complexity into clarity, one morning at a time.</p>
+</div>
+<div class="flex gap-16">
+<div>
+<h6 class="font-['Manrope'] uppercase tracking-widest text-[11px] font-bold mb-4">Navigation</h6>
+<ul class="text-sm space-y-2 text-on-surface-variant">
+<li><a class="hover:text-primary transition-colors" href="#">Briefing</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Interests</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Library</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Sources</a></li>
+</ul>
+</div>
+<div>
+<h6 class="font-['Manrope'] uppercase tracking-widest text-[11px] font-bold mb-4">Philosophy</h6>
+<ul class="text-sm space-y-2 text-on-surface-variant">
+<li><a class="hover:text-primary transition-colors" href="#">How it Works</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Ethics of Synthesis</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Data Privacy</a></li>
+</ul>
+</div>
+</div>
+</footer>
+</main>
+<div class="fixed bottom-8 right-8 lg:hidden">
+<button class="bg-primary text-on-primary w-14 h-14 rounded-full shadow-lg flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+</div>
+</body></html>
