@@ -1,76 +1,17 @@
 import { useState, useEffect } from 'react';
-import { digestsApi, interestsApi, type DailyDigest, type InsightRef, type UserInterestTag } from '../api/newsletter';
+import { digestsApi, interestsApi, type DailyDigest, type UserInterestTag, type InsightRef } from '../api/newsletter';
+import { InsightCard } from '../components/InsightCard';
 import dayjs from 'dayjs';
-
-// Zone badge component
-function ZoneBadge({ zone }: { zone: string }) {
-  const styles = {
-    main: 'bg-zinc-900 text-white',
-    explore: 'bg-amber-100 text-amber-800 border border-amber-200',
-    surprise: 'bg-violet-100 text-violet-800 border border-violet-200',
-  };
-  const labels = { main: '主航道', explore: '探索区', surprise: '惊喜箱' };
-  return (
-    <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded ${styles[zone as keyof typeof styles] || styles.explore}`}>
-      {labels[zone as keyof typeof labels] || zone}
-    </span>
-  );
-}
-
-// Insight card component
-function InsightCard({ insight, onTagClick }: { insight: InsightRef; onTagClick?: (tag: string) => void }) {
-  return (
-    <article className="group relative pl-6 border-l-2 border-border hover:border-accent transition-colors duration-200">
-      <div className="mb-2 flex items-start justify-between gap-3">
-        <h3 className="font-display text-lg font-semibold text-text-primary leading-snug group-hover:text-accent transition-colors">
-          {insight.title}
-        </h3>
-        <ZoneBadge zone={insight.zone} />
-      </div>
-
-      <p className="text-text-secondary text-sm leading-relaxed mb-3">
-        {insight.content.length > 200 ? `${insight.content.slice(0, 200)}...` : insight.content}
-      </p>
-
-      {insight.dialectical_analysis && (
-        <div className="mb-3 p-3 bg-bg-sunken rounded-lg border-l-4 border-accent/30">
-          <p className="text-xs text-text-muted uppercase tracking-wide mb-1">辩证分析</p>
-          <p className="text-sm text-text-secondary italic">{insight.dialectical_analysis}</p>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between">
-        <div className="flex flex-wrap gap-1.5">
-          {insight.tags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => onTagClick?.(tag)}
-              className="text-xs px-2 py-0.5 bg-bg-sunken text-text-secondary rounded hover:bg-accent-soft hover:text-accent transition-colors"
-            >
-              {tag}
-            </button>
-          ))}
-        </div>
-        <a
-          href={insight.source_article_link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-accent hover:underline"
-        >
-          {insight.source_name} →
-        </a>
-      </div>
-    </article>
-  );
-}
 
 // Section group component
 function SectionGroup({
   section,
-  onTagClick
+  onTagClick,
+  digestId
 }: {
   section: { domain: string; domain_icon: string; insights: InsightRef[] };
   onTagClick?: (tag: string) => void;
+  digestId: number;
 }) {
   return (
     <section className="mb-12">
@@ -81,7 +22,7 @@ function SectionGroup({
       </div>
       <div className="space-y-8">
         {section.insights.map((insight) => (
-          <InsightCard key={insight.anchor_id} insight={insight} onTagClick={onTagClick} />
+          <InsightCard key={insight.anchor_id} insight={insight} onTagClick={onTagClick} digestId={digestId} />
         ))}
       </div>
     </section>
@@ -168,7 +109,6 @@ function DateSelector({
   const [dates, setDates] = useState<string[]>([]);
 
   useEffect(() => {
-    // Fetch available dates
     digestsApi.list({ limit: 30 }).then((res) => {
       setDates(res.items.map((d) => d.date));
     }).catch(() => {});
@@ -322,7 +262,7 @@ export default function Newsletter() {
         {/* Sections */}
         {filteredSections.length > 0 ? (
           filteredSections.map((section) => (
-            <SectionGroup key={section.domain} section={section} onTagClick={handleTagClick} />
+            <SectionGroup key={section.domain} section={section} onTagClick={handleTagClick} digestId={digest.id} />
           ))
         ) : (
           <p className="text-text-muted text-center py-8">没有找到匹配的锚点</p>
