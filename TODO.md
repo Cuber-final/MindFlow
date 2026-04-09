@@ -1,6 +1,6 @@
-# AI News Aggregator - 项目进度追踪
+# AI News Aggregator V2 - 项目进度追踪
 
-> 本文件追踪 AI 新闻聚合项目的开发进度，基于高级工程开发工作流程。
+> 本文件追踪 AI News Digest V2 版本的开发进度
 
 ---
 
@@ -8,125 +8,92 @@
 
 | 项目 | 信息 |
 |------|------|
-| 项目名称 | AI News Aggregator (ai-crawler) |
+| 项目名称 | AI News Aggregator (ai-crawler) V2 |
 | 创建日期 | 2026-04-08 |
+| V2 启动日期 | 2026-04-09 |
 | 状态 | 🚧 开发中 |
-| 当前阶段 | Phase 5: 联调测试和文档 |
-| Python 版本 | 3.11.9 |
-| 虚拟环境 | ai-crawler (pyenv) |
+| 当前阶段 | Phase C: 前端 Newsletter UI (进行中) |
+| Python 虚拟环境 | backend/.venv |
 
 ---
 
-## 里程碑进度
+## V2 里程碑进度
 
 ```
-[██████████████████████░░░░░░░░░░░░░░░░░] 80% 完成
+[██████████████████░░░░░░░░░░░░░░░░░░░░] 60% 完成
 ```
 
 | Phase | 描述 | 状态 | 完成日期 |
 |-------|------|------|----------|
-| Phase 1 | 项目脚手架搭建（后端 + 前端基础结构） | ✅ 完成 | 2026-04-08 |
-| Phase 2 | 新闻源 CRUD + MPText 爬虫集成 | ✅ 完成 | 2026-04-08 |
-| Phase 3 | 文章展示 + AI 总结功能 | ✅ 完成 | 2026-04-08 |
-| Phase 4 | 定时任务 + 美化 UI | ✅ 完成 | 2026-04-08 |
-| Phase 5 | 联调测试和文档 | 🔄 进行中 | - |
-| Phase 6 | 生产环境部署 | ⏳ 待开始 | - |
+| Phase A | 后端简报生成（锚点提取 + 简报合成） | ✅ 完成 | 2026-04-09 |
+| Phase B | 后端兴趣学习（权重更新 + 行为日志） | ✅ 完成 | 2026-04-09 |
+| Phase C | 前端 Newsletter UI | 🔄 进行中 | - |
+| Phase D | 信息源扩展（知乎/RSS） | ⏳ 待开始 | - |
+| Phase E | 端到端联调 | ⏳ 待开始 | - |
+| Phase F | 文档和发布 | ⏳ 待开始 | - |
 
 ---
 
-## 功能清单
+## 已完成功能
 
-### 核心功能 (Core Features)
+### Phase A: 简报生成后端 ✅
 
-| ID | 功能 | 描述 | 优先级 | 状态 | 备注 |
-|----|------|------|--------|------|------|
-| F-001 | 新闻源 CRUD | 添加/编辑/删除新闻源 | P0 | ✅ 完成 | |
-| F-002 | MPText 爬虫 | 抓取微信公众号文章 | P0 | ✅ 完成 | |
-| F-003 | 文章列表展示 | 展示文章，支持筛选分页 | P0 | ✅ 完成 | |
-| F-004 | AI 总结 | 调用 OpenAI 兼容接口总结文章 | P0 | ✅ 完成 | |
-| F-005 | 定时任务 | APScheduler 每日定时抓取 | P1 | ✅ 完成 | 默认 8,12,18 点 |
-| F-006 | Markdown 渲染 | 文章内容 Markdown 渲染 | P1 | ✅ 完成 | |
-| F-007 | 自定义 REST API 源 | 支持添加其他 REST API 新闻源 | P2 | 🔄 进行中 | |
+| 功能 | 文件 | 状态 |
+|------|------|------|
+| AnchorPoint 模型 | backend/models.py | ✅ |
+| DailyDigest 模型 | backend/models.py | ✅ |
+| anchor_points 表 | backend/database.py | ✅ |
+| daily_digests 表 | backend/database.py | ✅ |
+| 锚点提取 AI 调用 | backend/services/ai.py | ✅ |
+| 简报合成 AI 调用 | backend/services/ai.py | ✅ |
+| /api/digests 路由 | backend/routers/digests.py | ✅ |
+| 定时生成简报 | backend/services/scheduler.py | ✅ |
 
-### UI/UX 功能
+### Phase B: 兴趣学习后端 ✅
 
-| ID | 功能 | 描述 | 优先级 | 状态 | 备注 |
-|----|------|------|--------|------|------|
-| U-001 | 新闻卡片布局 | 卡片式文章展示 | P0 | ✅ 完成 | |
-| U-002 | 响应式设计 | 支持移动端 | P1 | ✅ 完成 | |
-| U-003 | 搜索功能 | 文章搜索 | P1 | ⏳ 待开始 | |
-| U-004 | 新闻源筛选 | 侧边栏筛选 | P1 | ✅ 完成 | |
+| 功能 | 文件 | 状态 |
+|------|------|------|
+| UserInterestTag 模型 | backend/models.py | ✅ |
+| BehaviorLog 模型 | backend/models.py | ✅ |
+| user_interest_tags 表 | backend/database.py | ✅ |
+| user_behavior_logs 表 | backend/database.py | ✅ |
+| digest_feedback 表 | backend/database.py | ✅ |
+| 权重更新算法 | backend/services/learning.py | ✅ |
+| /api/interests 路由 | backend/routers/interests.py | ✅ |
+| /api/behavior 路由 | backend/routers/behavior.py | ✅ |
+| 内容分层策略 | backend/services/learning.py | ✅ |
 
-### 基础设施 (Infrastructure)
+### Phase C: 前端 Newsletter UI 🔄
 
-| ID | 功能 | 描述 | 优先级 | 状态 | 备注 |
-|----|------|------|--------|------|------|
-| I-001 | 数据库 | SQLite + 同步 sqlite3 | P0 | ✅ 完成 | |
-| I-002 | API 服务 | FastAPI 后端服务 | P0 | ✅ 完成 | |
-| I-003 | 单元测试 | pytest 测试覆盖 | P1 | ✅ 完成 | 24 tests passed |
-| I-004 | CORS 配置 | 前后端联调 | P0 | ✅ 完成 | |
-
----
-
-## 待办任务 (TODO)
-
-### 紧急 (Urgent) - P0
-
-- [ ] **T-001**: 配置真实 AI API Key 并测试 AI 总结功能
-- [x] **T-002**: 使用真实 MPText 账号测试文章抓取 ✅
-- [ ] **T-003**: 前后端联调测试（端到端）
-
-### 重要 (Important) - P1
-
-- [ ] **T-004**: 添加文章搜索功能
-- [ ] **T-005**: 实现增量抓取逻辑（避免重复抓取）
-- [ ] **T-006**: 添加错误通知机制（抓取失败时）
-- [ ] **T-007**: 完善项目 README 文档
-
-### 次要 (Nice to have) - P2
-
-- [ ] **T-008**: 支持更多 REST API 新闻源模板
-- [ ] **T-009**: 添加文章收藏/标记功能
-- [ ] **T-010**: 导出功能（PDF/EPUB）
-- [ ] **T-011**: 暗黑模式支持
+| 功能 | 文件 | 状态 |
+|------|------|------|
+| Newsletter 页面 | frontend/src/pages/Newsletter.tsx | ✅ |
+| 兴趣侧边栏 | frontend/src/pages/Newsletter.tsx | ✅ |
+| ZoneBadge 组件 | frontend/src/pages/Newsletter.tsx | ✅ |
+| InsightCard 组件 | frontend/src/pages/Newsletter.tsx | ✅ |
+| tokens.css 设计系统 | frontend/src/styles/tokens.css | ✅ |
+| 设计系统集成 | frontend/src/index.css | ✅ |
+| useBehaviorCollector Hook | - | ⏳ 待实现 |
+| InterestSettings 页面 | - | ⏳ 待实现 |
+| 日期选择器 | - | ⏳ 待实现 |
 
 ---
 
-## 进行中 (In Progress)
+## 下一步待办
 
-| ID | 任务 | 负责人 | 开始日期 | 预计完成 |
-|----|------|--------|----------|----------|
-| T-001 | 配置真实 AI API Key | - | 2026-04-08 | 2026-04-08 |
+### Phase C 剩余任务
 
----
+- [ ] C.4: 实现 useBehaviorCollector Hook
+- [ ] C.5: 新增 /settings/interests 页面
+- [ ] C.6: 实现 InterestTagItem 组件（权重条+统计）
+- [ ] C.7: 实现日期选择器（历史简报切换）
 
-## 已完成 (Done)
+### Phase D 信息源扩展
 
-### 2026-04-08
-
-- ✅ 数据库从 aiosqlite 改为同步 sqlite3（解决线程冲突）
-- ✅ 修复 scheduler.py 导入路径
-- ✅ 编写 pytest 测试用例（24 tests passed）
-- ✅ 启动后端服务并验证 API 正常工作
-- ✅ 创建 pyenv 虚拟环境 ai-crawler
-- ✅ 安装 Python 3.11.9
-
----
-
-## 已知问题 (Known Issues)
-
-| ID | 问题 | 严重程度 | 状态 | 备注 |
-|----|------|----------|------|------|
-| K-001 | AI API 未配置 | 高 | ⏳ 待处理 | 需要用户配置真实 API Key |
-| K-002 | MPText 认证未测试 | 高 | ⏳ 待处理 | 需要真实 fakeid 和 auth_key |
-
----
-
-## 下一步行动 (Next Actions)
-
-1. **立即**: 启动前端服务，验证前后端联调
-2. **立即**: 配置 AI API Key 进行真实测试
-3. **短期**: 测试 MPText 真实抓取流程
+- [ ] D.1: 实现 ZhihuCrawler（知乎文章爬虫）
+- [ ] D.2: 实现 RSSCrawler（RSS订阅爬虫）
+- [ ] D.3: 扩展 NewsSource 模型（新增 source_type）
+- [ ] D.4: 前端新增源类型选择
 
 ---
 
@@ -135,9 +102,11 @@
 - 后端服务: http://localhost:8000
 - API 文档: http://localhost:8000/docs
 - 前端服务: http://localhost:5173
+- Newsletter 页面: http://localhost:5173/newsletter
 - 数据库文件: `./data/ai_crawler.db`
-- 设计文档: `./docs/superpowers/specs/2026-04-08-ai-news-aggregator-design.md`
+- V2 设计文档: `./docs/superpowers/specs/ai-news-digest-v2-plan.md`
+- V2 技术规格: `./docs/superpowers/specs/2026-04-09-ai-news-digest-v2-technical-spec.md`
 
 ---
 
-*最后更新: 2026-04-08*
+*最后更新: 2026-04-09*

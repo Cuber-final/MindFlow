@@ -3,12 +3,14 @@ import Home from './pages/Home';
 import Article from './pages/Article';
 import Sources from './pages/Sources';
 import Settings from './pages/Settings';
+import Newsletter from './pages/Newsletter';
 
 function Navigation() {
   const location = useLocation();
 
   const navItems = [
     { path: '/', label: '资讯流', icon: '📰' },
+    { path: '/newsletter', label: '简报', icon: '📮' },
     { path: '/sources', label: '新闻源', icon: '📡' },
     { path: '/settings', label: '设置', icon: '⚙️' },
   ];
@@ -51,6 +53,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/article/:id" element={<Article />} />
+            <Route path="/newsletter" element={<Newsletter />} />
             <Route path="/sources" element={<Sources />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
