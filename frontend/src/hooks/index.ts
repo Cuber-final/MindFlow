@@ -1,0 +1,1 @@
+export { useBehaviorCollector } from './useBehaviorCollector';

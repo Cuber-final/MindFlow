@@ -20,14 +20,14 @@
 ## V2 里程碑进度
 
 ```
-[██████████████████░░░░░░░░░░░░░░░░░░░░] 60% 完成
+[██████████████████████░░░░░░░░░░░░░░░░░] 80% 完成
 ```
 
 | Phase | 描述 | 状态 | 完成日期 |
 |-------|------|------|----------|
 | Phase A | 后端简报生成（锚点提取 + 简报合成） | ✅ 完成 | 2026-04-09 |
 | Phase B | 后端兴趣学习（权重更新 + 行为日志） | ✅ 完成 | 2026-04-09 |
-| Phase C | 前端 Newsletter UI | 🔄 进行中 | - |
+| Phase C | 前端 Newsletter UI | ✅ 完成 | 2026-04-09 |
 | Phase D | 信息源扩展（知乎/RSS） | ⏳ 待开始 | - |
 | Phase E | 端到端联调 | ⏳ 待开始 | - |
 | Phase F | 文档和发布 | ⏳ 待开始 | - |
@@ -63,7 +63,7 @@
 | /api/behavior 路由 | backend/routers/behavior.py | ✅ |
 | 内容分层策略 | backend/services/learning.py | ✅ |
 
-### Phase C: 前端 Newsletter UI 🔄
+### Phase C: 前端 Newsletter UI ✅
 
 | 功能 | 文件 | 状态 |
 |------|------|------|
@@ -73,9 +73,10 @@
 | InsightCard 组件 | frontend/src/pages/Newsletter.tsx | ✅ |
 | tokens.css 设计系统 | frontend/src/styles/tokens.css | ✅ |
 | 设计系统集成 | frontend/src/index.css | ✅ |
-| useBehaviorCollector Hook | - | ⏳ 待实现 |
-| InterestSettings 页面 | - | ⏳ 待实现 |
-| 日期选择器 | - | ⏳ 待实现 |
+| useBehaviorCollector Hook | frontend/src/hooks/useBehaviorCollector.ts | ✅ |
+| InterestSettings 页面 | frontend/src/pages/InterestSettings.tsx | ✅ |
+| InterestTagItem 组件 | frontend/src/components/InterestTagItem.tsx | ✅ |
+| 日期选择器 | frontend/src/pages/Newsletter.tsx | ✅ |
 
 ---
 

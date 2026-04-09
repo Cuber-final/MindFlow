@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { digestsApi, interestsApi, type DailyDigest, type InsightRef, type UserInterestTag } from '../api/newsletter';
+import dayjs from 'dayjs';
 
 // Zone badge component
 function ZoneBadge({ zone }: { zone: string }) {
@@ -148,22 +149,103 @@ function LoadingSkeleton() {
   );
 }
 
+// Date selector component
+function DateSelector({
+  selectedDate,
+  onDateChange
+}: {
+  selectedDate: string;
+  onDateChange: (date: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [dates, setDates] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Fetch available dates
+    digestsApi.list({ limit: 30 }).then((res) => {
+      setDates(res.items.map((d) => d.date));
+    }).catch(() => {});
+  }, []);
+
+  const displayDate = selectedDate || dayjs().format('YYYY-MM-DD');
+  const formattedDisplay = dayjs(displayDate).format('YYYY年MM月DD日');
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 px-3 py-1.5 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-sunken rounded-lg transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <span>{formattedDisplay}</span>
+        <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 bg-white border border-border rounded-lg shadow-lg z-20 py-1 min-w-[160px]">
+            <button
+              onClick={() => {
+                onDateChange(dayjs().format('YYYY-MM-DD'));
+                setIsOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-bg-sunken"
+            >
+              今天
+            </button>
+            {dates.map((date) => (
+              <button
+                key={date}
+                onClick={() => {
+                  onDateChange(date);
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-bg-sunken ${
+                  date === selectedDate ? 'text-accent font-medium' : ''
+                }`}
+              >
+                {dayjs(date).format('YYYY-MM-DD')}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function Newsletter() {
   const [digest, setDigest] = useState<DailyDigest | null>(null);
   const [tags, setTags] = useState<UserInterestTag[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTag, setSelectedTag] = useState<string | undefined>();
+  const [selectedDate, setSelectedDate] = useState<string | undefined>();
 
   useEffect(() => {
     Promise.all([
-      digestsApi.latest().catch(() => null),
       interestsApi.listTags().catch(() => []),
-    ]).then(([digestData, tagsData]) => {
-      setDigest(digestData);
+    ]).then(([tagsData]) => {
       setTags(tagsData);
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    if (selectedDate) {
+      digestsApi.getByDate(selectedDate).then(setDigest).catch(() => setDigest(null));
+    } else {
+      digestsApi.latest().then(setDigest).catch(() => setDigest(null));
+    }
+  }, [selectedDate]);
+
+  const handleDateChange = (date: string) => {
+    setSelectedDate(date);
+  };
 
   const handleTagClick = (tag: string) => {
     setSelectedTag(selectedTag === tag ? undefined : tag);
@@ -210,7 +292,8 @@ export default function Newsletter() {
       {/* Main content */}
       <main className="flex-1 min-w-0">
         {/* Header */}
-        <header className="mb-10">
+        <header className="mb-10 flex items-start justify-between">
+          <div>
           <p className="text-sm text-text-muted mb-2">{digest.date}</p>
           <h1 className="font-display text-3xl font-bold text-text-primary mb-3">
             {digest.title}
@@ -224,6 +307,8 @@ export default function Newsletter() {
             <span>{digest.total_articles_processed} 篇文章</span>
             <span>·</span>
             <span>{digest.anchor_count} 个锚点</span>
+          </div>
+          <DateSelector selectedDate={selectedDate || (digest?.date)} onDateChange={handleDateChange} />
           </div>
         </header>
 

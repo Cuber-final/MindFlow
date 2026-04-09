@@ -4,6 +4,7 @@ import Article from './pages/Article';
 import Sources from './pages/Sources';
 import Settings from './pages/Settings';
 import Newsletter from './pages/Newsletter';
+import InterestSettings from './pages/InterestSettings';
 
 function Navigation() {
   const location = useLocation();
@@ -11,6 +12,7 @@ function Navigation() {
   const navItems = [
     { path: '/', label: '资讯流', icon: '📰' },
     { path: '/newsletter', label: '简报', icon: '📮' },
+    { path: '/interests', label: '兴趣', icon: '🎯' },
     { path: '/sources', label: '新闻源', icon: '📡' },
     { path: '/settings', label: '设置', icon: '⚙️' },
   ];
@@ -54,6 +56,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/article/:id" element={<Article />} />
             <Route path="/newsletter" element={<Newsletter />} />
+            <Route path="/interests" element={<InterestSettings />} />
             <Route path="/sources" element={<Sources />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
