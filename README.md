@@ -23,9 +23,57 @@
 
 ## 技术栈
 
-- **后端**: FastAPI + SQLite + APScheduler
+- **后端**: FastAPI + SQLAlchemy + PostgreSQL + APScheduler
 - **前端**: React + TypeScript + TailwindCSS
 - **AI**: OpenAI 兼容接口 (硅基流动 / MiniMax)
+
+## Docker 一键部署（推荐）
+
+### 1. 配置环境变量
+
+在项目根目录创建 `.env`（供 `docker compose` 读取）：
+
+```bash
+cat > .env <<'EOF'
+POSTGRES_PASSWORD=change_me
+SILICONFLOW_API_KEY=
+MPTEXT_API_KEY=
+AI_BASE_URL=https://api.siliconflow.cn/v1
+AI_MODEL=Qwen/Qwen2.5-7B-Instruct
+MPTEXT_BASE_URL=https://down.mptext.top
+EOF
+```
+
+### 2. 启动服务
+
+```bash
+docker compose up -d --build
+```
+
+后端启动时会自动执行 `alembic upgrade head` 迁移。
+
+### 3. 验证
+
+```bash
+docker compose ps
+curl http://localhost:8000/health
+```
+
+健康接口期望返回：
+
+```json
+{"status":"healthy","database":"up"}
+```
+
+### 4. 访问
+
+- 前端: http://localhost:5173
+- 后端 API: http://localhost:8000
+- API 文档: http://localhost:8000/docs
+
+### 5. 数据持久化
+
+PostgreSQL 数据保存在 Docker 命名卷 `postgres-data`（不是 `./data` 目录）。
 
 ## 快速开始
 
@@ -44,12 +92,15 @@ npm install
 ```bash
 cd backend
 cp .env.example .env
-# 编辑 .env，填入 MPTEXT_API_KEY
+# 编辑 .env，填入数据库和 API 配置
 ```
 
 ### 3. 启动服务
 
 ```bash
+# 终端 0: 启动 PostgreSQL（本地开发建议）
+docker compose up -d postgres
+
 # 终端 1: 启动后端
 cd backend
 source .venv/bin/activate
@@ -96,7 +147,7 @@ npm run dev
 ai-crawler/
 ├── backend/
 │   ├── main.py              # FastAPI 入口
-│   ├── database.py          # SQLite 数据库操作
+│   ├── database.py          # PostgreSQL / SQLAlchemy 数据访问
 │   ├── models.py            # Pydantic 数据模型
 │   ├── routers/             # API 路由
 │   │   ├── articles.py      # 文章管理
@@ -122,7 +173,7 @@ ai-crawler/
 │       │   └── useBehaviorCollector.ts  # 行为收集
 │       └── api/
 │           └── newsletter.ts  # API 客户端
-├── data/                     # SQLite 数据库文件
+├── data/                     # 历史 SQLite 数据（迁移用，可选）
 └── docs/                     # 设计文档和规格
 ```
 

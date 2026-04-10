@@ -1,7 +1,8 @@
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from database import init_db
+from database import init_db, check_db_health
 from routers import sources, articles, config, digests, interests, behavior
 from services.scheduler import start_scheduler, stop_scheduler
 
@@ -9,7 +10,7 @@ from services.scheduler import start_scheduler, stop_scheduler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    init_db()
+    await init_db()
     start_scheduler()
     yield
     # Shutdown
@@ -48,4 +49,10 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy"}
+    db_ok = await check_db_health()
+    if not db_ok:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "database": "down"}
+        )
+    return {"status": "healthy", "database": "up"}

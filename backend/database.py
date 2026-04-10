@@ -1,315 +1,309 @@
-import sqlite3
-import json
-from datetime import datetime
-from pathlib import Path
-from typing import Optional, List, Dict, Any
+import os
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
-DATABASE_PATH = Path(__file__).parent.parent / "data" / "ai_crawler.db"
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.pool import NullPool
+
+# PostgreSQL configuration from environment
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
+POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
+POSTGRES_DB = os.getenv("POSTGRES_DB", "mindflow")
+POSTGRES_USER = os.getenv("POSTGRES_USER", "mindflow")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
+
+DATABASE_URL = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+SYNC_DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
+# Global engine and sessionmakers
+async_engine = create_async_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
+AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
+
+sync_engine = create_engine(SYNC_DATABASE_URL, echo=False)
+SyncSessionLocal = sessionmaker(sync_engine)
 
 
-def get_db():
-    """Get database connection"""
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+@asynccontextmanager
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Get async database session"""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 
-def init_db():
+def get_sync_db() -> Session:
+    """Get sync database session (for migrations/scripts)"""
+    session = SyncSessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+async def init_db():
     """Initialize database schema"""
-    conn = get_db()
+    from models import Base
+
+    async with async_engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        await conn.run_sync(Base.metadata.create_all)
+
+
+async def check_db_health() -> bool:
+    """Check whether PostgreSQL connection is available."""
     try:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS news_sources (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                source_type TEXT NOT NULL DEFAULT 'custom',
-                api_base_url TEXT NOT NULL,
-                auth_key TEXT DEFAULT '',
-                config TEXT DEFAULT '{}',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_fetch_at TIMESTAMP,
-                article_count INTEGER DEFAULT 0
-            );
-
-            CREATE TABLE IF NOT EXISTS articles (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                source_id INTEGER NOT NULL,
-                external_id TEXT DEFAULT '',
-                title TEXT NOT NULL,
-                link TEXT DEFAULT '',
-                content TEXT DEFAULT '',
-                summary TEXT DEFAULT '',
-                author TEXT DEFAULT '',
-                published_at TIMESTAMP,
-                fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (source_id) REFERENCES news_sources(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS ai_config (
-                id INTEGER PRIMARY KEY CHECK (id = 1),
-                provider TEXT NOT NULL DEFAULT 'siliconflow',
-                api_key TEXT NOT NULL,
-                base_url TEXT NOT NULL,
-                model TEXT NOT NULL,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS fetch_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                source_id INTEGER,
-                status TEXT,
-                message TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS anchor_points (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                article_id INTEGER NOT NULL,
-                title TEXT NOT NULL,
-                content TEXT NOT NULL,
-                dialectical_analysis TEXT,
-                anchor_type TEXT DEFAULT 'opinion',
-                significance REAL DEFAULT 0.5,
-                source_article_title TEXT,
-                source_article_link TEXT,
-                source_name TEXT,
-                tags TEXT DEFAULT '[]',
-                related_tag_weights TEXT DEFAULT '{}',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS daily_digests (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date DATE UNIQUE NOT NULL,
-                title TEXT NOT NULL,
-                overview TEXT,
-                sections TEXT,
-                total_articles_processed INTEGER DEFAULT 0,
-                anchor_count INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS user_interest_tags (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tag TEXT UNIQUE NOT NULL,
-                weight REAL DEFAULT 1.0,
-                status TEXT DEFAULT 'active',
-                view_count INTEGER DEFAULT 0,
-                show_count INTEGER DEFAULT 0,
-                hide_count INTEGER DEFAULT 0,
-                total_time_spent REAL DEFAULT 0,
-                click_count INTEGER DEFAULT 0,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS user_behavior_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                digest_id INTEGER,
-                anchor_id INTEGER,
-                tag TEXT,
-                signal_type TEXT,
-                action TEXT,
-                value REAL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            CREATE TABLE IF NOT EXISTS digest_feedback (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                digest_id INTEGER NOT NULL,
-                anchor_id INTEGER NOT NULL,
-                action TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            INSERT OR IGNORE INTO ai_config (id, provider, api_key, base_url, model)
-            VALUES (1, 'siliconflow', '', 'https://api.siliconflow.cn/v1', 'Qwen/Qwen2.5-7B-Instruct');
-        """)
-        conn.commit()
-    finally:
-        conn.close()
-
-
-# News Sources CRUD
-def get_all_sources() -> List[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        rows = conn.execute("SELECT * FROM news_sources ORDER BY created_at DESC").fetchall()
-        return [dict(row) for row in rows]
-    finally:
-        conn.close()
-
-
-def get_source_by_id(source_id: int) -> Optional[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        row = conn.execute("SELECT * FROM news_sources WHERE id = ?", (source_id,)).fetchone()
-        return dict(row) if row else None
-    finally:
-        conn.close()
-
-
-def create_source(name: str, source_type: str, api_base_url: str, auth_key: str = "", config: dict = None) -> int:
-    conn = get_db()
-    try:
-        cursor = conn.execute(
-            """INSERT INTO news_sources (name, source_type, api_base_url, auth_key, config)
-               VALUES (?, ?, ?, ?, ?)""",
-            (name, source_type, api_base_url, auth_key, json.dumps(config or {}))
-        )
-        conn.commit()
-        return cursor.lastrowid
-    finally:
-        conn.close()
-
-
-def update_source(source_id: int, **kwargs) -> bool:
-    fields = []
-    values = []
-    for k, v in kwargs.items():
-        if k in ("name", "source_type", "api_base_url", "auth_key", "config"):
-            fields.append(f"{k} = ?")
-            values.append(json.dumps(v) if k == "config" else v)
-    if not fields:
+        async with async_engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return True
+    except Exception:
         return False
-    fields.append("updated_at = CURRENT_TIMESTAMP")
-    values.append(source_id)
-    conn = get_db()
-    try:
-        conn.execute(f"UPDATE news_sources SET {', '.join(fields)} WHERE id = ?", values)
-        conn.commit()
-        return True
-    finally:
-        conn.close()
 
 
-def delete_source(source_id: int) -> bool:
-    conn = get_db()
-    try:
-        conn.execute("DELETE FROM articles WHERE source_id = ?", (source_id,))
-        conn.execute("DELETE FROM news_sources WHERE id = ?", (source_id,))
-        conn.commit()
-        return True
-    finally:
-        conn.close()
+def init_db_sync():
+    """Sync version for migration scripts"""
+    from models import Base
+
+    with sync_engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        Base.metadata.create_all(conn)
 
 
-def update_source_fetch_time(source_id: int, article_count: int):
-    conn = get_db()
-    try:
-        conn.execute(
-            """UPDATE news_sources
-               SET last_fetch_at = CURRENT_TIMESTAMP, article_count = ?
-               WHERE id = ?""",
-            (article_count, source_id)
+# ============================================================================
+# CRUD Functions - Async SQLAlchemy Pattern
+# ============================================================================
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+from models import (
+    NewsSource, Article, AnchorPoint, DailyDigest,
+    UserInterestTag, UserBehaviorLog, DigestFeedback, AIConfig, FetchLog
+)
+from sqlalchemy import select, func
+
+
+# --------------------------------------------------------------------------
+# News Sources CRUD
+# --------------------------------------------------------------------------
+
+async def get_all_sources() -> List[Dict[str, Any]]:
+    """Get all news sources ordered by creation date."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(NewsSource).order_by(NewsSource.created_at.desc())
         )
-        conn.commit()
-    finally:
-        conn.close()
+        sources = result.scalars().all()
+        return [s.__dict__ for s in sources]
 
 
+async def get_source_by_id(source_id: int) -> Optional[Dict[str, Any]]:
+    """Get a single news source by ID."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(NewsSource).where(NewsSource.id == source_id)
+        )
+        source = result.scalar_one_or_none()
+        return source.__dict__ if source else None
+
+
+async def create_source(
+    name: str,
+    source_type: str,
+    api_base_url: str,
+    auth_key: str = "",
+    config: dict = None
+) -> int:
+    """Create a new news source and return its ID."""
+    async with get_db() as session:
+        source = NewsSource(
+            name=name,
+            source_type=source_type,
+            api_base_url=api_base_url,
+            auth_key=auth_key,
+            config=config or {}
+        )
+        session.add(source)
+        await session.flush()
+        await session.refresh(source)
+        return source.id
+
+
+async def update_source(source_id: int, **kwargs) -> bool:
+    """Update a news source. Returns True if updated, False if not found."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(NewsSource).where(NewsSource.id == source_id)
+        )
+        source = result.scalar_one_or_none()
+        if not source:
+            return False
+        for key, value in kwargs.items():
+            if hasattr(source, key):
+                setattr(source, key, value)
+        source.updated_at = datetime.utcnow()
+        return True
+
+
+async def delete_source(source_id: int) -> bool:
+    """Delete a news source. Returns True if deleted, False if not found."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(NewsSource).where(NewsSource.id == source_id)
+        )
+        source = result.scalar_one_or_none()
+        if not source:
+            return False
+        await session.delete(source)
+        return True
+
+
+async def update_source_fetch_time(source_id: int, article_count: int):
+    """Update the last fetch time and article count for a source."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(NewsSource).where(NewsSource.id == source_id)
+        )
+        source = result.scalar_one_or_none()
+        if source:
+            source.last_fetch_at = datetime.utcnow()
+            source.article_count = article_count
+
+
+# --------------------------------------------------------------------------
 # Articles CRUD
-def get_articles(source_id: Optional[int] = None, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
-    sql = "SELECT * FROM articles"
-    params = []
-    if source_id:
-        sql += " WHERE source_id = ?"
-        params.append(source_id)
-    sql += " ORDER BY published_at DESC LIMIT ? OFFSET ?"
-    params.extend([limit, offset])
-    conn = get_db()
-    try:
-        rows = conn.execute(sql, params).fetchall()
-        return [dict(row) for row in rows]
-    finally:
-        conn.close()
+# --------------------------------------------------------------------------
+
+async def get_articles(
+    source_id: Optional[int] = None,
+    limit: int = 50,
+    offset: int = 0
+) -> List[Dict[str, Any]]:
+    """Get articles, optionally filtered by source_id."""
+    async with get_db() as session:
+        query = select(Article).order_by(Article.fetched_at.desc()).limit(limit).offset(offset)
+        if source_id is not None:
+            query = query.where(Article.source_id == source_id)
+        result = await session.execute(query)
+        articles = result.scalars().all()
+        return [a.__dict__ for a in articles]
 
 
-def get_article_by_id(article_id: int) -> Optional[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        row = conn.execute("SELECT * FROM articles WHERE id = ?", (article_id,)).fetchone()
-        return dict(row) if row else None
-    finally:
-        conn.close()
-
-
-def get_article_by_external_id(source_id: int, external_id: str) -> Optional[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        row = conn.execute(
-            "SELECT * FROM articles WHERE source_id = ? AND external_id = ?",
-            (source_id, external_id)
-        ).fetchone()
-        return dict(row) if row else None
-    finally:
-        conn.close()
-
-
-def create_article(source_id: int, title: str, external_id: str = "", link: str = "",
-                   content: str = "", author: str = "", published_at: datetime = None) -> int:
-    conn = get_db()
-    try:
-        cursor = conn.execute(
-            """INSERT INTO articles (source_id, external_id, title, link, content, author, published_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (source_id, external_id, title, link, content, author, published_at)
+async def get_article_by_id(article_id: int) -> Optional[Dict[str, Any]]:
+    """Get a single article by ID."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(Article).where(Article.id == article_id)
         )
-        conn.commit()
-        return cursor.lastrowid
-    finally:
-        conn.close()
+        article = result.scalar_one_or_none()
+        return article.__dict__ if article else None
 
 
-def update_article_summary(article_id: int, summary: str):
-    conn = get_db()
-    try:
-        conn.execute("UPDATE articles SET summary = ? WHERE id = ?", (summary, article_id))
-        conn.commit()
-    finally:
-        conn.close()
+async def get_article_by_external_id(
+    source_id: int,
+    external_id: str
+) -> Optional[Dict[str, Any]]:
+    """Get an article by source_id and external_id."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(Article).where(
+                Article.source_id == source_id,
+                Article.external_id == external_id
+            )
+        )
+        article = result.scalar_one_or_none()
+        return article.__dict__ if article else None
 
 
+async def create_article(
+    source_id: int,
+    title: str,
+    external_id: str = "",
+    link: str = "",
+    content: str = "",
+    author: str = "",
+    published_at: datetime = None
+) -> int:
+    """Create a new article and return its ID."""
+    async with get_db() as session:
+        article = Article(
+            source_id=source_id,
+            title=title,
+            external_id=external_id,
+            link=link,
+            content=content,
+            author=author,
+            published_at=published_at
+        )
+        session.add(article)
+        await session.flush()
+        await session.refresh(article)
+        return article.id
+
+
+async def update_article_summary(article_id: int, summary: str):
+    """Update the summary for an article."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(Article).where(Article.id == article_id)
+        )
+        article = result.scalar_one_or_none()
+        if article:
+            article.summary = summary
+
+
+# --------------------------------------------------------------------------
 # AI Config
-def get_ai_config() -> Dict[str, Any]:
-    conn = get_db()
-    try:
-        row = conn.execute("SELECT * FROM ai_config WHERE id = 1").fetchone()
-        return dict(row) if row else None
-    finally:
-        conn.close()
+# --------------------------------------------------------------------------
+
+async def get_ai_config() -> Dict[str, Any]:
+    """Get AI configuration."""
+    async with get_db() as session:
+        result = await session.execute(select(AIConfig).where(AIConfig.id == 1))
+        config = result.scalar_one_or_none()
+        return config.__dict__ if config else {}
 
 
-def update_ai_config(provider: str, api_key: str, base_url: str, model: str):
-    conn = get_db()
-    try:
-        conn.execute(
-            """INSERT OR REPLACE INTO ai_config (id, provider, api_key, base_url, model, updated_at)
-               VALUES (1, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
-            (provider, api_key, base_url, model)
-        )
-        conn.commit()
-    finally:
-        conn.close()
+async def update_ai_config(provider: str, api_key: str, base_url: str, model: str):
+    """Update AI configuration."""
+    async with get_db() as session:
+        result = await session.execute(select(AIConfig).where(AIConfig.id == 1))
+        config = result.scalar_one_or_none()
+        if config:
+            config.provider = provider
+            config.api_key = api_key
+            config.base_url = base_url
+            config.model = model
+        else:
+            config = AIConfig(id=1, provider=provider, api_key=api_key, base_url=base_url, model=model)
+            session.add(config)
 
 
+# --------------------------------------------------------------------------
 # Fetch Logs
-def add_fetch_log(source_id: Optional[int], status: str, message: str):
-    conn = get_db()
-    try:
-        conn.execute(
-            "INSERT INTO fetch_logs (source_id, status, message) VALUES (?, ?, ?)",
-            (source_id, status, message)
-        )
-        conn.commit()
-    finally:
-        conn.close()
+# --------------------------------------------------------------------------
+
+async def add_fetch_log(source_id: Optional[int], status: str, message: str):
+    """Add a fetch log entry."""
+    async with get_db() as session:
+        log = FetchLog(source_id=source_id, status=status, message=message)
+        session.add(log)
 
 
+# --------------------------------------------------------------------------
 # Anchor Points CRUD
-def create_anchor(
+# --------------------------------------------------------------------------
+
+async def create_anchor(
     article_id: int,
     title: str,
     content: str,
@@ -319,245 +313,239 @@ def create_anchor(
     source_article_title: str,
     source_article_link: str,
     source_name: str,
-    tags: list[str],
-    related_tag_weights: dict[str, float]
+    tags: list,
+    related_tag_weights: dict
 ) -> int:
-    conn = get_db()
-    try:
-        cursor = conn.execute(
-            """INSERT INTO anchor_points
-               (article_id, title, content, dialectical_analysis, anchor_type, significance,
-                source_article_title, source_article_link, source_name, tags, related_tag_weights)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                article_id, title, content, dialectical_analysis, anchor_type, significance,
-                source_article_title, source_article_link, source_name,
-                json.dumps(tags), json.dumps(related_tag_weights)
-            )
+    """Create a new anchor point and return its ID."""
+    async with get_db() as session:
+        anchor = AnchorPoint(
+            article_id=article_id,
+            title=title,
+            content=content,
+            dialectical_analysis=dialectical_analysis,
+            anchor_type=anchor_type,
+            significance=significance,
+            source_article_title=source_article_title,
+            source_article_link=source_article_link,
+            source_name=source_name,
+            tags=tags,
+            related_tag_weights=related_tag_weights
         )
-        conn.commit()
-        return cursor.lastrowid
-    finally:
-        conn.close()
+        session.add(anchor)
+        await session.flush()
+        await session.refresh(anchor)
+        return anchor.id
 
 
-def get_anchors(
+async def get_anchors(
     limit: int = 100,
     offset: int = 0,
-    tags: Optional[list[str]] = None
+    tags: Optional[list] = None
 ) -> List[Dict[str, Any]]:
-    sql = "SELECT * FROM anchor_points"
-    params = []
-    if tags:
-        placeholders = ",".join("?" * len(tags))
-        sql += f" WHERE tags LIKE '%' || ? || '%'"
-        params.append(tags[0])
-    sql += " ORDER BY significance DESC, created_at DESC LIMIT ? OFFSET ?"
-    params.extend([limit, offset])
-    conn = get_db()
-    try:
-        rows = conn.execute(sql, params).fetchall()
-        return [_parse_anchor_row(dict(row)) for row in rows]
-    finally:
-        conn.close()
+    """Get anchor points with optional tag filtering using JSONB containment."""
+    async with get_db() as session:
+        query = select(AnchorPoint).order_by(
+            AnchorPoint.significance.desc(),
+            AnchorPoint.created_at.desc()
+        ).limit(limit).offset(offset)
+
+        if tags:
+            query = query.where(AnchorPoint.tags.contains(tags))
+
+        result = await session.execute(query)
+        anchors = result.scalars().all()
+        return [a.__dict__ for a in anchors]
 
 
-def get_anchor_by_id(anchor_id: int) -> Optional[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        row = conn.execute("SELECT * FROM anchor_points WHERE id = ?", (anchor_id,)).fetchone()
-        return _parse_anchor_row(dict(row)) if row else None
-    finally:
-        conn.close()
+async def get_anchor_by_id(anchor_id: int) -> Optional[Dict[str, Any]]:
+    """Get a single anchor point by ID."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(AnchorPoint).where(AnchorPoint.id == anchor_id)
+        )
+        anchor = result.scalar_one_or_none()
+        return anchor.__dict__ if anchor else None
 
 
-def get_anchors_by_article(article_id: int) -> List[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        rows = conn.execute(
-            "SELECT * FROM anchor_points WHERE article_id = ? ORDER BY significance DESC",
-            (article_id,)
-        ).fetchall()
-        return [_parse_anchor_row(dict(row)) for row in rows]
-    finally:
-        conn.close()
+async def get_anchors_by_article(article_id: int) -> List[Dict[str, Any]]:
+    """Get all anchor points for a specific article."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(AnchorPoint).where(AnchorPoint.article_id == article_id)
+        )
+        anchors = result.scalars().all()
+        return [a.__dict__ for a in anchors]
 
 
-def _parse_anchor_row(row: dict) -> dict:
-    """Parse anchor row and convert JSON fields"""
-    row["tags"] = json.loads(row.get("tags", "[]"))
-    row["related_tag_weights"] = json.loads(row.get("related_tag_weights", "{}"))
-    return row
-
-
+# --------------------------------------------------------------------------
 # Daily Digest CRUD
-def create_digest(
+# --------------------------------------------------------------------------
+
+async def create_digest(
     date_str: str,
     title: str,
     overview: str,
-    sections: list[dict],
+    sections: list,
     total_articles: int,
     anchor_count: int
 ) -> int:
-    conn = get_db()
-    try:
-        cursor = conn.execute(
-            """INSERT INTO daily_digests
-               (date, title, overview, sections, total_articles_processed, anchor_count)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (date_str, title, overview, json.dumps(sections, ensure_ascii=False), total_articles, anchor_count)
+    """Create a new daily digest and return its ID."""
+    from datetime import date
+    async with get_db() as session:
+        digest = DailyDigest(
+            date=date.fromisoformat(date_str),
+            title=title,
+            overview=overview,
+            sections=sections,
+            total_articles_processed=total_articles,
+            anchor_count=anchor_count
         )
-        conn.commit()
-        return cursor.lastrowid
-    finally:
-        conn.close()
+        session.add(digest)
+        await session.flush()
+        await session.refresh(digest)
+        return digest.id
 
 
-def get_digest_by_date(date_str: str) -> Optional[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        row = conn.execute("SELECT * FROM daily_digests WHERE date = ?", (date_str,)).fetchone()
-        return _parse_digest_row(dict(row)) if row else None
-    finally:
-        conn.close()
-
-
-def get_latest_digest() -> Optional[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        row = conn.execute("SELECT * FROM daily_digests ORDER BY date DESC LIMIT 1").fetchone()
-        return _parse_digest_row(dict(row)) if row else None
-    finally:
-        conn.close()
-
-
-def get_digests(limit: int = 30, offset: int = 0) -> List[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        rows = conn.execute(
-            "SELECT * FROM daily_digests ORDER BY date DESC LIMIT ? OFFSET ?",
-            (limit, offset)
-        ).fetchall()
-        return [_parse_digest_row(dict(row)) for row in rows]
-    finally:
-        conn.close()
-
-
-def _parse_digest_row(row: dict) -> dict:
-    """Parse digest row and convert JSON fields"""
-    row["sections"] = json.loads(row.get("sections", "[]"))
-    return row
-
-
-def get_all_anchors_for_digest() -> List[Dict[str, Any]]:
-    """Get all recent anchors for digest generation"""
-    conn = get_db()
-    try:
-        # Get anchors from last 7 days
-        rows = conn.execute(
-            """SELECT * FROM anchor_points
-               WHERE created_at >= datetime('now', '-7 days')
-               ORDER BY significance DESC, created_at DESC"""
-        ).fetchall()
-        return [_parse_anchor_row(dict(row)) for row in rows]
-    finally:
-        conn.close()
-
-
-# === Interest Tag CRUD ===
-
-def get_all_interest_tags() -> List[Dict[str, Any]]:
-    """Get all interest tags"""
-    conn = get_db()
-    try:
-        rows = conn.execute("SELECT * FROM user_interest_tags ORDER BY weight DESC").fetchall()
-        return [dict(row) for row in rows]
-    finally:
-        conn.close()
-
-
-def get_interest_tag_by_id(tag_id: int) -> Optional[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        row = conn.execute("SELECT * FROM user_interest_tags WHERE id = ?", (tag_id,)).fetchone()
-        return dict(row) if row else None
-    finally:
-        conn.close()
-
-
-def get_interest_tag_by_name(tag: str) -> Optional[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        row = conn.execute("SELECT * FROM user_interest_tags WHERE tag = ?", (tag,)).fetchone()
-        return dict(row) if row else None
-    finally:
-        conn.close()
-
-
-def create_interest_tag(tag: str) -> int:
-    conn = get_db()
-    try:
-        cursor = conn.execute(
-            "INSERT INTO user_interest_tags (tag) VALUES (?)",
-            (tag,)
+async def get_digest_by_date(date_str: str) -> Optional[Dict[str, Any]]:
+    """Get a daily digest by date string."""
+    from datetime import date
+    async with get_db() as session:
+        result = await session.execute(
+            select(DailyDigest).where(DailyDigest.date == date.fromisoformat(date_str))
         )
-        conn.commit()
-        return cursor.lastrowid
-    finally:
-        conn.close()
+        digest = result.scalar_one_or_none()
+        return digest.__dict__ if digest else None
 
 
-def update_interest_tag(tag_id: int, **kwargs) -> bool:
-    allowed_fields = ("weight", "status", "view_count", "show_count", "hide_count", "total_time_spent", "click_count")
-    fields = []
-    values = []
-    for k, v in kwargs.items():
-        if k in allowed_fields:
-            fields.append(f"{k} = ?")
-            values.append(v)
-    if not fields:
-        return False
-    fields.append("last_updated = CURRENT_TIMESTAMP")
-    values.append(tag_id)
-    conn = get_db()
-    try:
-        conn.execute(f"UPDATE user_interest_tags SET {', '.join(fields)} WHERE id = ?", values)
-        conn.commit()
+async def get_latest_digest() -> Optional[Dict[str, Any]]:
+    """Get the most recent daily digest."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(DailyDigest).order_by(DailyDigest.date.desc()).limit(1)
+        )
+        digest = result.scalar_one_or_none()
+        return digest.__dict__ if digest else None
+
+
+async def get_digests(limit: int = 30, offset: int = 0) -> List[Dict[str, Any]]:
+    """Get daily digests ordered by date descending."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(DailyDigest).order_by(DailyDigest.date.desc()).limit(limit).offset(offset)
+        )
+        digests = result.scalars().all()
+        return [d.__dict__ for d in digests]
+
+
+async def get_all_anchors_for_digest() -> List[Dict[str, Any]]:
+    """Get all anchors for digest generation."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(AnchorPoint).order_by(AnchorPoint.created_at.desc())
+        )
+        anchors = result.scalars().all()
+        return [a.__dict__ for a in anchors]
+
+
+# --------------------------------------------------------------------------
+# Interest Tag CRUD
+# --------------------------------------------------------------------------
+
+async def get_all_interest_tags() -> List[Dict[str, Any]]:
+    """Get all user interest tags."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(UserInterestTag).order_by(UserInterestTag.tag)
+        )
+        tags = result.scalars().all()
+        return [t.__dict__ for t in tags]
+
+
+async def get_interest_tag_by_id(tag_id: int) -> Optional[Dict[str, Any]]:
+    """Get a single interest tag by ID."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(UserInterestTag).where(UserInterestTag.id == tag_id)
+        )
+        tag = result.scalar_one_or_none()
+        return tag.__dict__ if tag else None
+
+
+async def get_interest_tag_by_name(tag: str) -> Optional[Dict[str, Any]]:
+    """Get a single interest tag by name."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(UserInterestTag).where(UserInterestTag.tag == tag)
+        )
+        tag = result.scalar_one_or_none()
+        return tag.__dict__ if tag else None
+
+
+async def create_interest_tag(tag: str) -> int:
+    """Create a new interest tag and return its ID."""
+    async with get_db() as session:
+        interest_tag = UserInterestTag(tag=tag)
+        session.add(interest_tag)
+        await session.flush()
+        await session.refresh(interest_tag)
+        return interest_tag.id
+
+
+async def update_interest_tag(tag_id: int, **kwargs) -> bool:
+    """Update an interest tag. Returns True if updated, False if not found."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(UserInterestTag).where(UserInterestTag.id == tag_id)
+        )
+        tag = result.scalar_one_or_none()
+        if not tag:
+            return False
+        for key, value in kwargs.items():
+            if hasattr(tag, key):
+                setattr(tag, key, value)
         return True
-    finally:
-        conn.close()
 
 
-def delete_interest_tag(tag_id: int) -> bool:
-    conn = get_db()
-    try:
-        conn.execute("DELETE FROM user_interest_tags WHERE id = ?", (tag_id,))
-        conn.commit()
+async def delete_interest_tag(tag_id: int) -> bool:
+    """Delete an interest tag. Returns True if deleted, False if not found."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(UserInterestTag).where(UserInterestTag.id == tag_id)
+        )
+        tag = result.scalar_one_or_none()
+        if not tag:
+            return False
+        await session.delete(tag)
         return True
-    finally:
-        conn.close()
 
 
-def get_interest_tag_stats() -> dict:
-    """Get interest tag statistics"""
-    conn = get_db()
-    try:
-        row = conn.execute("""
-            SELECT
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-                SUM(CASE WHEN status = 'frozen' THEN 1 ELSE 0 END) as frozen,
-                SUM(CASE WHEN status = 'candidate' THEN 1 ELSE 0 END) as candidate
-            FROM user_interest_tags
-        """).fetchone()
-        return dict(row) if row else {"total": 0, "active": 0, "frozen": 0, "candidate": 0}
-    finally:
-        conn.close()
+async def get_interest_tag_stats() -> dict:
+    """Get aggregated statistics for interest tags."""
+    async with get_db() as session:
+        result = await session.execute(select(UserInterestTag))
+        tags = result.scalars().all()
+
+        total_views = sum(t.view_count or 0 for t in tags)
+        total_shows = sum(t.show_count or 0 for t in tags)
+        total_hides = sum(t.hide_count or 0 for t in tags)
+        total_clicks = sum(t.click_count or 0 for t in tags)
+        total_time = sum(t.total_time_spent or 0.0 for t in tags)
+
+        return {
+            "total_tags": len(tags),
+            "total_views": total_views,
+            "total_shows": total_shows,
+            "total_hides": total_hides,
+            "total_clicks": total_clicks,
+            "total_time_spent": total_time
+        }
 
 
-# === Behavior Log CRUD ===
+# --------------------------------------------------------------------------
+# Behavior Log CRUD
+# --------------------------------------------------------------------------
 
-def create_behavior_log(
+async def create_behavior_log(
     digest_id: Optional[int],
     anchor_id: int,
     tag: str,
@@ -565,89 +553,77 @@ def create_behavior_log(
     action: str,
     value: float = 0.0
 ) -> int:
-    conn = get_db()
-    try:
-        cursor = conn.execute(
-            """INSERT INTO user_behavior_logs
-               (digest_id, anchor_id, tag, signal_type, action, value)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (digest_id, anchor_id, tag, signal_type, action, value)
+    """Create a new behavior log entry and return its ID."""
+    async with get_db() as session:
+        log = UserBehaviorLog(
+            digest_id=digest_id,
+            anchor_id=anchor_id,
+            tag=tag,
+            signal_type=signal_type,
+            action=action,
+            value=value
         )
-        conn.commit()
-        return cursor.lastrowid
-    finally:
-        conn.close()
+        session.add(log)
+        await session.flush()
+        await session.refresh(log)
+        return log.id
 
 
-def create_behavior_logs_batch(logs: list[dict]) -> int:
-    """Batch create behavior logs, return count of created logs"""
-    conn = get_db()
-    try:
-        for log in logs:
-            conn.execute(
-                """INSERT INTO user_behavior_logs
-                   (digest_id, anchor_id, tag, signal_type, action, value)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (
-                    log.get("digest_id"),
-                    log["anchor_id"],
-                    log["tag"],
-                    log["signal_type"],
-                    log["action"],
-                    log.get("value", 0.0)
-                )
-            )
-        conn.commit()
-        return len(logs)
-    finally:
-        conn.close()
+async def create_behavior_logs_batch(logs: list[dict]) -> int:
+    """Create multiple behavior log entries. Returns count created."""
+    async with get_db() as session:
+        log_objects = [
+            UserBehaviorLog(**log_data) for log_data in logs
+        ]
+        session.add_all(log_objects)
+        await session.flush()
+        return len(log_objects)
 
 
-def get_behavior_logs(
+async def get_behavior_logs(
     digest_id: Optional[int] = None,
     anchor_id: Optional[int] = None,
     limit: int = 100
 ) -> List[Dict[str, Any]]:
-    sql = "SELECT * FROM user_behavior_logs WHERE 1=1"
-    params = []
-    if digest_id is not None:
-        sql += " AND digest_id = ?"
-        params.append(digest_id)
-    if anchor_id is not None:
-        sql += " AND anchor_id = ?"
-        params.append(anchor_id)
-    sql += " ORDER BY created_at DESC LIMIT ?"
-    params.append(limit)
-    conn = get_db()
-    try:
-        rows = conn.execute(sql, params).fetchall()
-        return [dict(row) for row in rows]
-    finally:
-        conn.close()
+    """Get behavior logs with optional filtering."""
+    async with get_db() as session:
+        query = select(UserBehaviorLog).order_by(
+            UserBehaviorLog.created_at.desc()
+        ).limit(limit)
+
+        if digest_id is not None:
+            query = query.where(UserBehaviorLog.digest_id == digest_id)
+        if anchor_id is not None:
+            query = query.where(UserBehaviorLog.anchor_id == anchor_id)
+
+        result = await session.execute(query)
+        logs = result.scalars().all()
+        return [l.__dict__ for l in logs]
 
 
-# === Digest Feedback CRUD ===
+# --------------------------------------------------------------------------
+# Digest Feedback CRUD
+# --------------------------------------------------------------------------
 
-def create_digest_feedback(digest_id: int, anchor_id: int, action: str) -> int:
-    conn = get_db()
-    try:
-        cursor = conn.execute(
-            """INSERT INTO digest_feedback (digest_id, anchor_id, action) VALUES (?, ?, ?)""",
-            (digest_id, anchor_id, action)
+async def create_digest_feedback(digest_id: int, anchor_id: int, action: str) -> int:
+    """Create a new digest feedback entry and return its ID."""
+    async with get_db() as session:
+        feedback = DigestFeedback(
+            digest_id=digest_id,
+            anchor_id=anchor_id,
+            action=action
         )
-        conn.commit()
-        return cursor.lastrowid
-    finally:
-        conn.close()
+        session.add(feedback)
+        await session.flush()
+        await session.refresh(feedback)
+        return feedback.id
 
 
-def get_digest_feedback(digest_id: int) -> List[Dict[str, Any]]:
-    conn = get_db()
-    try:
-        rows = conn.execute(
-            "SELECT * FROM digest_feedback WHERE digest_id = ? ORDER BY created_at DESC",
-            (digest_id,)
-        ).fetchall()
-        return [dict(row) for row in rows]
-    finally:
-        conn.close()
+async def get_digest_feedback(digest_id: int) -> List[Dict[str, Any]]:
+    """Get all feedback entries for a specific digest."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(DigestFeedback).where(DigestFeedback.digest_id == digest_id)
+        )
+        feedbacks = result.scalars().all()
+        return [f.__dict__ for f in feedbacks]
