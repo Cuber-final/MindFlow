@@ -31,12 +31,12 @@ router = APIRouter(prefix="/api/behavior", tags=["behavior"])
 async def create_log(body: BehaviorLogCreate):
     """Record a single behavior log and update tag weight"""
     # Verify anchor exists
-    anchor = get_anchor_by_id(body.anchor_id)
+    anchor = await get_anchor_by_id(body.anchor_id)
     if not anchor:
         raise HTTPException(status_code=404, detail="Anchor not found")
 
     # Create behavior log
-    log_id = create_behavior_log(
+    log_id = await create_behavior_log(
         digest_id=body.digest_id,
         anchor_id=body.anchor_id,
         tag=body.tag,
@@ -46,7 +46,7 @@ async def create_log(body: BehaviorLogCreate):
     )
 
     # Update tag stats and weight
-    tag_data = get_interest_tag_by_name(body.tag)
+    tag_data = await get_interest_tag_by_name(body.tag)
     if tag_data:
         update_fields = {}
         action = body.action.value
@@ -61,10 +61,10 @@ async def create_log(body: BehaviorLogCreate):
             update_fields["total_time_spent"] = tag_data.get("total_time_spent", 0.0) + body.value
 
         if update_fields:
-            update_interest_tag(tag_data["id"], **update_fields)
+            await update_interest_tag(tag_data["id"], **update_fields)
 
         # Recalculate weight based on signals
-        signals = get_behavior_logs(anchor_id=body.anchor_id, limit=100)
+        signals = await get_behavior_logs(anchor_id=body.anchor_id, limit=100)
         tag_signals = [s for s in signals if s.get("tag") == body.tag]
         if tag_signals:
             new_weight = update_tag_weight(
@@ -72,7 +72,7 @@ async def create_log(body: BehaviorLogCreate):
                 tag_signals,
                 is_new_discovery=False
             )
-            update_interest_tag(tag_data["id"], weight=new_weight)
+            await update_interest_tag(tag_data["id"], weight=new_weight)
 
     return {"id": log_id, "status": "recorded"}
 
@@ -80,7 +80,7 @@ async def create_log(body: BehaviorLogCreate):
 @router.post("/logs/batch", status_code=201)
 async def create_logs_batch(body: BehaviorLogBatchCreate):
     """Batch record behavior logs"""
-    count = create_behavior_logs_batch([log.model_dump() for log in body.logs])
+    count = await create_behavior_logs_batch([log.model_dump() for log in body.logs])
     return {"count": count, "status": "recorded"}
 
 
@@ -91,18 +91,18 @@ async def list_logs(
     limit: int = 100
 ):
     """Get behavior logs with optional filtering"""
-    return get_behavior_logs(digest_id=digest_id, anchor_id=anchor_id, limit=limit)
+    return await get_behavior_logs(digest_id=digest_id, anchor_id=anchor_id, limit=limit)
 
 
 @router.post("/feedback", status_code=201)
 async def create_feedback(body: DigestFeedbackCreate):
     """Record digest-level feedback (show/hide on an anchor)"""
     # Verify anchor exists
-    anchor = get_anchor_by_id(body.anchor_id)
+    anchor = await get_anchor_by_id(body.anchor_id)
     if not anchor:
         raise HTTPException(status_code=404, detail="Anchor not found")
 
-    feedback_id = create_digest_feedback(
+    feedback_id = await create_digest_feedback(
         digest_id=body.digest_id,
         anchor_id=body.anchor_id,
         action=body.action.value,
@@ -114,4 +114,4 @@ async def create_feedback(body: DigestFeedbackCreate):
 @router.get("/feedback/{digest_id}", response_model=list[dict])
 async def list_feedback(digest_id: int):
     """Get all feedback for a digest"""
-    return get_digest_feedback(digest_id)
+    return await get_digest_feedback(digest_id)

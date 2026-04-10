@@ -47,14 +47,14 @@ def _tag_to_response(tag_data: dict) -> UserInterestTagResponse:
 @router.get("/tags", response_model=list[UserInterestTagResponse])
 async def list_tags():
     """List all interest tags"""
-    tags = get_all_interest_tags()
+    tags = await get_all_interest_tags()
     return [_tag_to_response(t) for t in tags]
 
 
 @router.get("/tags/stats", response_model=InterestStats)
 async def get_stats():
     """Get interest tag statistics"""
-    stats = get_interest_tag_stats()
+    stats = await get_interest_tag_stats()
     return InterestStats(
         total_tags=stats["total"],
         active_tags=stats["active"],
@@ -66,7 +66,7 @@ async def get_stats():
 @router.get("/tags/{tag}", response_model=UserInterestTagResponse)
 async def get_tag(tag: str):
     """Get interest tag by name"""
-    tag_data = get_interest_tag_by_name(tag)
+    tag_data = await get_interest_tag_by_name(tag)
     if not tag_data:
         raise HTTPException(status_code=404, detail="Tag not found")
     return _tag_to_response(tag_data)
@@ -75,19 +75,19 @@ async def get_tag(tag: str):
 @router.post("/tags", response_model=UserInterestTagResponse, status_code=201)
 async def create_tag(body: UserInterestTagCreate):
     """Create a new interest tag"""
-    existing = get_interest_tag_by_name(body.tag)
+    existing = await get_interest_tag_by_name(body.tag)
     if existing:
         raise HTTPException(status_code=400, detail="Tag already exists")
 
-    tag_id = create_interest_tag(body.tag)
-    tag_data = get_interest_tag_by_id(tag_id)
+    tag_id = await create_interest_tag(body.tag)
+    tag_data = await get_interest_tag_by_id(tag_id)
     return _tag_to_response(tag_data)
 
 
 @router.patch("/tags/{tag_id}", response_model=UserInterestTagResponse)
 async def update_tag(tag_id: int, body: UserInterestTagUpdate):
     """Update interest tag"""
-    tag_data = get_interest_tag_by_id(tag_id)
+    tag_data = await get_interest_tag_by_id(tag_id)
     if not tag_data:
         raise HTTPException(status_code=404, detail="Tag not found")
 
@@ -98,26 +98,26 @@ async def update_tag(tag_id: int, body: UserInterestTagUpdate):
         update_fields["status"] = body.status.value
 
     if update_fields:
-        update_interest_tag(tag_id, **update_fields)
+        await update_interest_tag(tag_id, **update_fields)
 
-    tag_data = get_interest_tag_by_id(tag_id)
+    tag_data = await get_interest_tag_by_id(tag_id)
     return _tag_to_response(tag_data)
 
 
 @router.delete("/tags/{tag_id}", status_code=204)
 async def delete_tag(tag_id: int):
     """Delete interest tag"""
-    tag_data = get_interest_tag_by_id(tag_id)
+    tag_data = await get_interest_tag_by_id(tag_id)
     if not tag_data:
         raise HTTPException(status_code=404, detail="Tag not found")
 
-    delete_interest_tag(tag_id)
+    await delete_interest_tag(tag_id)
 
 
 @router.get("/tags/{tag}/zone")
 async def get_tag_zone(tag: str):
     """Get content zone for a tag based on its weight"""
-    tag_data = get_interest_tag_by_name(tag)
+    tag_data = await get_interest_tag_by_name(tag)
     if not tag_data:
         raise HTTPException(status_code=404, detail="Tag not found")
 

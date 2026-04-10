@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, Float, Date, DateTime, ForeignKey, JSON, Index
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 from datetime import datetime
 
@@ -45,8 +46,8 @@ class AnchorPoint(Base):
     source_article_title = Column(String)
     source_article_link = Column(String)
     source_name = Column(String)
-    tags = Column(JSON, default=list)
-    related_tag_weights = Column(JSON, default=dict)
+    tags = Column(JSONB, default=list)
+    related_tag_weights = Column(JSONB, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     __table_args__ = (
@@ -61,7 +62,7 @@ class DailyDigest(Base):
     date = Column(Date, unique=True, nullable=False)
     title = Column(String, nullable=False)
     overview = Column(Text)
-    sections = Column(JSON, default=list)
+    sections = Column(JSONB, default=list)
     total_articles_processed = Column(Integer, default=0)
     anchor_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)

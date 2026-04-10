@@ -10,7 +10,7 @@ router = APIRouter(prefix="/api/config", tags=["系统配置"])
 @router.get("/ai", response_model=AIConfigResponse)
 async def get_ai():
     """获取 AI 配置"""
-    config = get_ai_config()
+    config = await get_ai_config()
     if not config:
         return AIConfigResponse(
             provider="siliconflow",
@@ -29,7 +29,7 @@ async def get_ai():
 @router.put("/ai")
 async def save_ai_config(config: AIConfigUpdate):
     """更新 AI 配置"""
-    update_ai_config(
+    await update_ai_config(
         provider=config.provider,
         api_key=config.api_key,
         base_url=config.base_url,
