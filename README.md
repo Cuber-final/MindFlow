@@ -147,8 +147,10 @@ npm run dev
 ai-crawler/
 ├── backend/
 │   ├── main.py              # FastAPI 入口
-│   ├── database.py          # PostgreSQL / SQLAlchemy 数据访问
-│   ├── models.py            # Pydantic 数据模型
+│   ├── database.py          # PostgreSQL / SQLAlchemy 异步数据访问
+│   ├── models.py            # SQLAlchemy ORM 模型
+│   ├── schemas.py           # Pydantic 数据模型
+│   ├── alembic/             # 数据库迁移版本管理
 │   ├── routers/             # API 路由
 │   │   ├── articles.py      # 文章管理
 │   │   ├── sources.py        # 信息源管理
@@ -156,19 +158,29 @@ ai-crawler/
 │   │   ├── interests.py     # 兴趣标签
 │   │   ├── behavior.py      # 行为日志
 │   │   └── config.py        # 系统配置
-│   └── services/
-│       ├── ai.py            # AI 调用服务
-│       ├── crawler.py       # 爬虫服务
-│       ├── scheduler.py      # 定时任务
-│       └── learning.py       # 权重学习算法
+│   ├── services/
+│   │   ├── ai.py            # AI 调用服务
+│   │   ├── crawler.py       # 爬虫服务
+│   │   ├── scheduler.py      # 定时任务
+│   │   └── learning.py       # 权重学习算法
+│   └── tests/               # 后端测试
+│       ├── test_articles.py
+│       ├── test_config.py
+│       ├── test_database.py
+│       ├── test_digests.py
+│       ├── test_full_flow.py
+│       ├── test_main.py
+│       └── test_sources.py
 ├── frontend/
 │   └── src/
 │       ├── pages/            # 页面组件
-│       │   ├── Newsletter.tsx   # 简报首页
-│       │   ├── Sources.tsx       # 新闻源管理
+│       │   ├── Newsletter.tsx      # 简报首页
+│       │   ├── Sources.tsx         # 新闻源管理
+│       │   ├── Settings.tsx        # 系统设置
 │       │   └── InterestSettings.tsx  # 兴趣设置
 │       ├── components/       # 通用组件
-│       │   └── InsightCard.tsx     # 洞察卡片
+│       │   ├── InsightCard.tsx     # 洞察卡片
+│       │   └── InterestTagItem.tsx # 兴趣标签项
 │       ├── hooks/
 │       │   └── useBehaviorCollector.ts  # 行为收集
 │       └── api/
@@ -193,6 +205,14 @@ pytest tests/ -v
 cd frontend
 npm run build
 ```
+
+## 致谢
+
+本项目基于 [wechat-article-exporter](https://github.com/wechat-article/wechat-article-exporter) 提供的公网接口服务进行二次封装，感谢原作者的贡献。
+
+## 免责声明
+
+本项目仅供学习交流使用，请勿用于任何商业目的。如需商业使用，请联系作者获得授权。
 
 ## License
 
