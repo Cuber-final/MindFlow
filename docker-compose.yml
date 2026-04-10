@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mindflow-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=mindflow
+      - POSTGRES_USER=mindflow
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mindflow_dev}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mindflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -12,6 +30,11 @@ services:
       - AI_MODEL=${AI_MODEL:-Qwen/Qwen2.5-7B-Instruct}
       - MPTEXT_API_KEY=${MPTEXT_API_KEY:-}
       - MPTEXT_BASE_URL=${MPTEXT_BASE_URL:-https://down.mptext.top}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=mindflow
+      - POSTGRES_USER=mindflow
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-mindflow_dev}
     volumes:
       - ./data:/app/data
       - ./backend/.env:/app/.env:ro
@@ -24,6 +47,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      frontend:
+        condition: service_started
 
   frontend:
     build:
@@ -39,3 +67,6 @@ services:
 networks:
   default:
     name: mindflow-network
+
+volumes:
+  postgres-data:
