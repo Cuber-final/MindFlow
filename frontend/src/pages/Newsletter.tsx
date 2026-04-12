@@ -545,15 +545,21 @@ export default function Newsletter() {
   const latestDigestDate = latestDigest?.date;
 
   const filteredSections = useMemo(
-    () =>
-      digest?.sections
-        .map((section) => ({
-          ...section,
-          insights: selectedTag
-            ? section.insights.filter((insight) => insight.tags.includes(selectedTag))
-            : section.insights,
-        }))
-        .filter((section) => section.insights.length > 0) ?? [],
+    () => {
+      const sections = Array.isArray(digest?.sections) ? digest.sections : [];
+
+      return sections
+        .map((section) => {
+          const insights = Array.isArray(section?.insights) ? section.insights : [];
+          return {
+            ...section,
+            insights: selectedTag
+              ? insights.filter((insight) => Array.isArray(insight.tags) && insight.tags.includes(selectedTag))
+              : insights,
+          };
+        })
+        .filter((section) => section.insights.length > 0);
+    },
     [digest, selectedTag]
   );
 
