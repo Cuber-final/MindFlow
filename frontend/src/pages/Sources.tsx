@@ -2,6 +2,17 @@ import { useState, useEffect } from 'react';
 import { sourcesApi, type NewsSource, type ParsedAccount } from '../api/newsletter';
 import dayjs from 'dayjs';
 
+type FetchModalStatus = 'loading' | 'success' | 'error';
+
+interface FetchFeedbackState {
+  open: boolean;
+  status: FetchModalStatus;
+  source: NewsSource | null;
+  message: string;
+  details: string[];
+  articlesAdded: number;
+}
+
 export default function Sources() {
   const [sources, setSources] = useState<NewsSource[]>([]);
   const [loading, setLoading] = useState(true);
@@ -9,10 +20,19 @@ export default function Sources() {
   const [showUrlModal, setShowUrlModal] = useState(false);
   const [editingSource, setEditingSource] = useState<NewsSource | null>(null);
   const [fetchingId, setFetchingId] = useState<number | null>(null);
+  const [fetchingAll, setFetchingAll] = useState(false);
   const [quickAddUrl, setQuickAddUrl] = useState('');
   const [quickAddLoading, setQuickAddLoading] = useState(false);
   const [quickAddError, setQuickAddError] = useState('');
   const [parsedAccountForModal, setParsedAccountForModal] = useState<ParsedAccount | null>(null);
+  const [fetchFeedback, setFetchFeedback] = useState<FetchFeedbackState>({
+    open: false,
+    status: 'loading',
+    source: null,
+    message: '',
+    details: [],
+    articlesAdded: 0,
+  });
 
   useEffect(() => {
     loadSources();
@@ -66,17 +86,149 @@ export default function Sources() {
     }
   };
 
-  const handleFetch = async (id: number) => {
-    setFetchingId(id);
+  const getSourceDebugHints = (source: NewsSource) => {
+    if (source.source_type === 'mptext') {
+      return [
+        '请确认公众号 FakeID 是否有效且未被修改',
+        '请确认 API 地址和认证配置可用',
+      ];
+    }
+
+    return [
+      '请确认该源 API 地址可访问',
+      '请确认该源的认证参数和返回格式正确',
+    ];
+  };
+
+  const showFetchStatusModal = ({
+    status,
+    source,
+    message,
+    details,
+    articlesAdded = 0,
+  }: {
+    status: FetchModalStatus;
+    source: NewsSource | null;
+    message: string;
+    details: string[];
+    articlesAdded?: number;
+  }) => {
+    setFetchFeedback({
+      open: true,
+      status,
+      source,
+      message,
+      details,
+      articlesAdded,
+    });
+  };
+
+  const closeFetchFeedback = () => {
+    setFetchFeedback((prev) => ({ ...prev, open: false }));
+  };
+
+  const handleFetch = async (source: NewsSource) => {
+    const startedAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
+    setFetchingId(source.id);
+    showFetchStatusModal({
+      status: 'loading',
+      source,
+      message: `正在抓取 ${source.name}，请稍候...`,
+      details: [
+        `来源 ID: ${source.id}`,
+        `来源类型: ${source.source_type}`,
+        `触发时间: ${startedAt}`,
+      ],
+    });
+
     try {
-      const result = await sourcesApi.fetch(id);
-      alert(result.message);
-      loadSources();
+      const result = await sourcesApi.fetch(source.id);
+      const details = [
+        `来源 ID: ${source.id}`,
+        `来源类型: ${source.source_type}`,
+        `触发时间: ${startedAt}`,
+        `新增文章: ${result.articles_added ?? 0}`,
+      ];
+
+      if (result.success) {
+        showFetchStatusModal({
+          status: 'success',
+          source,
+          message: result.message || '抓取完成',
+          details,
+          articlesAdded: result.articles_added ?? 0,
+        });
+        await loadSources();
+      } else {
+        showFetchStatusModal({
+          status: 'error',
+          source,
+          message: result.message || '抓取失败',
+          details: [...details, ...getSourceDebugHints(source)],
+          articlesAdded: result.articles_added ?? 0,
+        });
+      }
     } catch (err) {
-      alert('抓取失败');
+      const rawMessage = err instanceof Error ? err.message : '未知错误';
+      const errorType = rawMessage.startsWith('HTTP ')
+        ? '接口响应异常'
+        : '网络或运行时异常';
+
+      showFetchStatusModal({
+        status: 'error',
+        source,
+        message: `抓取失败：${rawMessage}`,
+        details: [
+          `来源 ID: ${source.id}`,
+          `来源类型: ${source.source_type}`,
+          `触发时间: ${startedAt}`,
+          `异常类型: ${errorType}`,
+          ...getSourceDebugHints(source),
+        ],
+      });
     } finally {
       setFetchingId(null);
     }
+  };
+
+  const handleFetchAll = async () => {
+    if (!sources.length || fetchingAll) return;
+    setFetchingAll(true);
+
+    let successCount = 0;
+    let failCount = 0;
+    let totalAdded = 0;
+
+    for (const source of sources) {
+      try {
+        const result = await sourcesApi.fetch(source.id);
+        totalAdded += result.articles_added ?? 0;
+        if (result.success) {
+          successCount += 1;
+        } else {
+          failCount += 1;
+        }
+      } catch {
+        failCount += 1;
+      }
+    }
+
+    await loadSources();
+
+    showFetchStatusModal({
+      status: failCount > 0 ? 'error' : 'success',
+      source: null,
+      message: failCount > 0 ? '批量抓取已完成（含失败项）' : '批量抓取已完成',
+      details: [
+        `处理来源: ${sources.length}`,
+        `成功: ${successCount}`,
+        `失败: ${failCount}`,
+        `新增文章: ${totalAdded}`,
+      ],
+      articlesAdded: totalAdded,
+    });
+
+    setFetchingAll(false);
   };
 
   const handleEdit = (source: NewsSource) => {
@@ -106,11 +258,17 @@ export default function Sources() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => sources.forEach(s => handleFetch(s.id))}
-            className="flex items-center gap-2 border border-[#c0c8cb]/30 px-5 py-2.5 rounded-lg text-sm font-semibold text-[#1a1c1b] hover:bg-[#f4f4f2] transition-colors"
+            onClick={handleFetchAll}
+            disabled={fetchingAll || loading || sources.length === 0}
+            className="flex items-center gap-2 border border-[#c0c8cb]/30 px-5 py-2.5 rounded-lg text-sm font-semibold text-[#1a1c1b] hover:bg-[#f4f4f2] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>sync</span>
-            Manual Crawl All
+            <span
+              className={`material-symbols-outlined text-base ${fetchingAll ? 'animate-spin' : ''}`}
+              style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+            >
+              sync
+            </span>
+            {fetchingAll ? 'Crawling...' : 'Manual Crawl All'}
           </button>
           <button
             onClick={() => {
@@ -234,12 +392,17 @@ export default function Sources() {
                       <td className="px-8 py-6 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={() => handleFetch(source.id)}
+                            onClick={() => handleFetch(source)}
                             disabled={fetchingId === source.id}
-                            className="p-2 text-[#71787c] hover:text-[#0d4656] hover:bg-white rounded-lg transition-all"
+                            className="p-2 text-[#71787c] hover:text-[#0d4656] hover:bg-white rounded-lg transition-all disabled:opacity-50"
                             title="Fetch Now"
                           >
-                            <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>sync</span>
+                            <span
+                              className={`material-symbols-outlined text-lg ${fetchingId === source.id ? 'animate-spin' : ''}`}
+                              style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}
+                            >
+                              sync
+                            </span>
                           </button>
                           <button
                             onClick={() => handleEdit(source)}
@@ -334,6 +497,17 @@ export default function Sources() {
           initialAccount={parsedAccountForModal}
         />
       )}
+
+      <FetchFeedbackModal
+        open={fetchFeedback.open}
+        status={fetchFeedback.status}
+        source={fetchFeedback.source}
+        message={fetchFeedback.message}
+        details={fetchFeedback.details}
+        articlesAdded={fetchFeedback.articlesAdded}
+        onClose={closeFetchFeedback}
+        onRetry={fetchFeedback.source ? () => void handleFetch(fetchFeedback.source!) : undefined}
+      />
     </div>
   );
 }
@@ -630,6 +804,124 @@ function AddFromUrlModal({ onClose, onSuccess, initialAccount }: AddFromUrlModal
             className="px-4 py-2 text-sm font-medium text-white bg-[#0d4656] rounded-lg hover:bg-[#2c5e6e] disabled:opacity-50 transition-colors"
           >
             {saving ? '添加中...' : '确认添加'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface FetchFeedbackModalProps {
+  open: boolean;
+  status: FetchModalStatus;
+  source: NewsSource | null;
+  message: string;
+  details: string[];
+  articlesAdded: number;
+  onClose: () => void;
+  onRetry?: () => void;
+}
+
+function FetchFeedbackModal({
+  open,
+  status,
+  source,
+  message,
+  details,
+  articlesAdded,
+  onClose,
+  onRetry,
+}: FetchFeedbackModalProps) {
+  if (!open) return null;
+
+  const statusLabel = status === 'loading' ? 'Running' : status === 'success' ? 'Completed' : 'Failed';
+  const statusClassName =
+    status === 'loading'
+      ? 'bg-[#e8f1f3] text-[#0d4656]'
+      : status === 'success'
+        ? 'bg-[#e8f3ec] text-[#2f6f4f]'
+        : 'bg-[#ffe9e7] text-[#ba1a1a]';
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#101819]/55 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-xl rounded-2xl border border-[#c0c8cb]/25 bg-[#f4f4f2] shadow-[0_40px_90px_rgba(9,24,29,0.35)]">
+        <div className="flex items-start justify-between border-b border-[#c0c8cb]/15 px-6 py-5">
+          <div className="pr-6">
+            <div className="mb-2 flex items-center gap-2">
+              <div className="h-5 w-1 rounded-full bg-[#0d4656]" />
+              <p className="font-['Manrope'] text-[11px] uppercase tracking-widest text-[#5e5e5e]">
+                Fetch Status
+              </p>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusClassName}`}>
+                {statusLabel}
+              </span>
+            </div>
+            <h3 className="font-['Newsreader'] text-3xl italic leading-tight text-[#1a1c1b]">
+              {source ? source.name : 'Manual Crawl All'}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-2 text-[#71787c] transition-colors hover:bg-white hover:text-[#1a1c1b]"
+            aria-label="关闭"
+          >
+            <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
+              close
+            </span>
+          </button>
+        </div>
+
+        <div className="space-y-4 px-6 py-5">
+          <div className="flex items-start gap-3 rounded-xl border border-[#c0c8cb]/20 bg-white px-4 py-3">
+            <span
+              className={`material-symbols-outlined mt-0.5 text-lg ${
+                status === 'loading'
+                  ? 'animate-spin text-[#0d4656]'
+                  : status === 'success'
+                    ? 'text-[#2f6f4f]'
+                    : 'text-[#ba1a1a]'
+              }`}
+              style={{ fontVariationSettings: "'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24" }}
+            >
+              {status === 'loading' ? 'progress_activity' : status === 'success' ? 'task_alt' : 'error'}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-[#1a1c1b]">{message}</p>
+              {status !== 'loading' && (
+                <p className="mt-1 text-xs text-[#5e5e5e]">本次新增文章：{articlesAdded}</p>
+              )}
+            </div>
+          </div>
+
+          {details.length > 0 && (
+            <div className="rounded-xl border border-[#c0c8cb]/20 bg-[#fdfdfc] px-4 py-3">
+              <p className="mb-2 font-['Manrope'] text-[10px] uppercase tracking-widest text-[#5e5e5e]">Details</p>
+              <ul className="space-y-1.5 text-sm text-[#40484b]">
+                {details.map((detail) => (
+                  <li key={detail} className="flex items-start gap-2">
+                    <span className="mt-[7px] h-1.5 w-1.5 rounded-full bg-[#9ca5a9]" />
+                    <span>{detail}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-[#c0c8cb]/15 px-6 py-4">
+          {status === 'error' && onRetry && (
+            <button
+              onClick={onRetry}
+              className="rounded-lg border border-[#c0c8cb]/30 px-4 py-2 text-sm font-semibold text-[#1a1c1b] transition-colors hover:bg-white"
+            >
+              Retry
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="rounded-lg bg-[#0d4656] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2c5e6e]"
+          >
+            {status === 'loading' ? 'Background Run' : 'Close'}
           </button>
         </div>
       </div>

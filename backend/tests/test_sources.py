@@ -61,6 +61,31 @@ class TestSourcesAPI:
             assert data[0]["name"] == "测试源1"
             assert data[0]["config"]["fakeid"] == "fake123"
 
+    def test_list_sources_tolerates_nullable_legacy_fields(self, client):
+        """Test listing sources when legacy rows contain nullable fields."""
+        with patch("routers.sources.get_all_sources") as mock_get:
+            mock_get.return_value = [
+                {
+                    "id": 1,
+                    "name": "旧数据源",
+                    "source_type": "custom",
+                    "api_base_url": "https://example.com",
+                    "auth_key": None,
+                    "config": None,
+                    "created_at": "2026-04-12 10:00:00",
+                    "updated_at": "2026-04-12 10:00:00",
+                    "last_fetch_at": None,
+                    "article_count": None,
+                }
+            ]
+            response = client.get("/api/sources")
+            assert response.status_code == 200
+            data = response.json()
+            assert len(data) == 1
+            assert data[0]["auth_key"] == ""
+            assert data[0]["config"] == {}
+            assert data[0]["article_count"] == 0
+
     def test_get_source_by_id(self, client, mock_sources):
         """Test getting single source"""
         with patch("routers.sources.get_source_by_id") as mock_get:

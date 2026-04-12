@@ -39,11 +39,28 @@ def _format_datetime(dt):
 def _source_to_response(source: dict) -> dict:
     """Convert database source dict to response-safe payload."""
     result = dict(source)
-    if result.get("config") and isinstance(result["config"], str):
+    config = result.get("config")
+    if isinstance(config, str):
         try:
-            result["config"] = json.loads(result["config"])
+            config = json.loads(config)
         except json.JSONDecodeError:
-            result["config"] = {}
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+    result["config"] = config
+
+    result["auth_key"] = result.get("auth_key") or ""
+
+    article_count = result.get("article_count")
+    if article_count is None:
+        article_count = 0
+    elif not isinstance(article_count, int):
+        try:
+            article_count = int(article_count)
+        except (TypeError, ValueError):
+            article_count = 0
+    result["article_count"] = article_count
+
     result["created_at"] = _format_datetime(result.get("created_at"))
     result["updated_at"] = _format_datetime(result.get("updated_at"))
     result["last_fetch_at"] = _format_datetime(result.get("last_fetch_at"))

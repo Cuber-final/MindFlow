@@ -92,15 +92,6 @@ curl http://localhost:5173/api/interests/tags
 - 后端 API: http://localhost:8000
 - API 文档: http://localhost:8000/docs
 
-### 4.1 Docker 部署为什么需要 `/api` 反向代理
-
-当前前端 API 客户端使用相对路径 `/api`。在 Docker 部署里，浏览器访问的是前端 nginx 容器暴露出来的 `5173` 端口，因此：
-
-- 浏览器发起的 `/api/...` 请求会先到前端 nginx；
-- nginx 需要把这些请求转发给后端容器 `backend:8000`；
-- 这样前后端保持同源访问，避免额外处理浏览器跨域与环境地址切换。
-
-如果没有这层代理，`/api/*` 很容易被 SPA fallback 误返回成 `index.html`，进而导致前端把 HTML 当 JSON 解析，引发运行时错误。
 
 ### 5. 数据持久化
 
@@ -161,7 +152,7 @@ npm run dev
 
 ### 微信公众号配置
 
-1. 从 https://mptext.cn 获取 API Key
+1. 从 https://down.mptext.top/ 获取 API Key
 2. 在「设置 → AI 配置」填入 `MPTEXT_API_KEY`
 
 ### 信息源管理
