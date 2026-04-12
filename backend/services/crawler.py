@@ -3,6 +3,7 @@ import json
 import re
 import os
 import time
+import inspect
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
@@ -138,6 +139,13 @@ def parse_json_if_possible(text: str) -> Optional[dict]:
     except Exception:
         return None
     return None
+
+
+async def _maybe_await(value: Any) -> Any:
+    """Resolve coroutine/AsyncMock values while leaving plain results untouched."""
+    if inspect.isawaitable(value):
+        return await value
+    return value
 
 
 # ============ MPText API Functions ============
@@ -350,12 +358,15 @@ def extract_nickname_from_json(meta: dict) -> str:
 
 async def fetch_source_articles(source_id: int) -> Tuple[int, str]:
     """Fetch all articles from a source - enhanced version"""
-    source = get_source_by_id(source_id)
+    source = await _maybe_await(get_source_by_id(source_id))
     if not source:
         return 0, "新闻源不存在"
 
-    source_config = json.loads(source["config"]) if source["config"] else {}
-    auth_key = source.get("auth_key", "") or get_api_key()
+    source_config_raw = source.get("config")
+    if isinstance(source_config_raw, str):
+        source_config = json.loads(source_config_raw) if source_config_raw else {}
+    else:
+        source_config = source_config_raw or {}
 
     if source["source_type"] == "mptext":
         fakeid = source_config.get("fakeid")
@@ -380,7 +391,7 @@ async def fetch_source_articles(source_id: int) -> Tuple[int, str]:
                     continue
 
                 # Check if article already exists
-                existing = get_article_by_external_id(source_id, external_id)
+                existing = await _maybe_await(get_article_by_external_id(source_id, external_id))
                 if existing:
                     continue
 
@@ -388,7 +399,7 @@ async def fetch_source_articles(source_id: int) -> Tuple[int, str]:
                 published_at = None
                 if update_time:
                     try:
-                        published_at = datetime.fromtimestamp(update_time).strftime("%Y-%m-%d %H:%M:%S")
+                        published_at = datetime.fromtimestamp(update_time)
                     except Exception:
                         pass
 
@@ -401,7 +412,7 @@ async def fetch_source_articles(source_id: int) -> Tuple[int, str]:
                     content = f"内容下载失败: {str(e)}"
 
                 # Create article in database
-                create_article(
+                await _maybe_await(create_article(
                     source_id=source_id,
                     title=title,
                     external_id=external_id,
@@ -409,19 +420,19 @@ async def fetch_source_articles(source_id: int) -> Tuple[int, str]:
                     content=content,
                     author=source["name"],
                     published_at=published_at
-                )
+                ))
                 added_count += 1
 
             # Update source fetch time and count
-            update_source_fetch_time(source_id, len(all_articles))
-            add_fetch_log(source_id, "success", f"成功抓取 {added_count} 篇新文章")
+            await _maybe_await(update_source_fetch_time(source_id, len(all_articles)))
+            await _maybe_await(add_fetch_log(source_id, "success", f"成功抓取 {added_count} 篇新文章"))
             return added_count, "抓取成功"
 
         except MPTextCrawlerError as e:
-            add_fetch_log(source_id, "failed", f"[{e.code}] {e.message}")
+            await _maybe_await(add_fetch_log(source_id, "failed", f"[{e.code}] {e.message}"))
             return 0, f"抓取失败: [{e.code}] {e.message}"
         except Exception as e:
-            add_fetch_log(source_id, "failed", str(e))
+            await _maybe_await(add_fetch_log(source_id, "failed", str(e)))
             return 0, f"抓取失败: {str(e)}"
 
     else:
@@ -433,7 +444,7 @@ async def fetch_all_sources() -> Dict[int, Tuple[int, str]]:
     """Fetch articles from all sources"""
     from database import get_all_sources
 
-    sources = get_all_sources()
+    sources = await _maybe_await(get_all_sources())
     results = {}
 
     for source in sources:

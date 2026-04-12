@@ -10,11 +10,38 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(error.detail || `HTTP ${res.status}`);
+    let errorMessage = `HTTP ${res.status}`;
+    try {
+      const errorText = await res.text();
+      if (errorText) {
+        const parsed = JSON.parse(errorText);
+        errorMessage = parsed?.detail || parsed?.message || errorMessage;
+      }
+    } catch {
+      // ignore parse failures and use fallback
+    }
+    throw new Error(errorMessage);
   }
 
-  return res.json();
+  if (res.status === 204 || res.status === 205) {
+    return undefined as T;
+  }
+
+  const contentLength = res.headers.get('content-length');
+  if (contentLength === '0') {
+    return undefined as T;
+  }
+
+  const responseText = await res.text();
+  if (!responseText.trim()) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(responseText) as T;
+  } catch {
+    return responseText as T;
+  }
 }
 
 // === Shared Types ===
@@ -45,7 +72,21 @@ export interface AIConfig {
   provider: string;
   base_url: string;
   model: string;
+  has_api_key: boolean;
   updated_at: string | null;
+}
+
+export interface AIConfigDraft {
+  provider: string;
+  api_key: string;
+  base_url: string;
+  model: string;
+}
+
+export interface AIConnectionTestResult {
+  success: boolean;
+  message: string;
+  used_stored_api_key?: boolean;
 }
 
 // === Digest Types ===
@@ -82,6 +123,9 @@ export interface DigestListResponse {
   total: number;
   limit: number;
   offset: number;
+  has_more: boolean;
+  week_start: string | null;
+  week_end: string | null;
 }
 
 // === Interest Types ===
@@ -170,18 +214,22 @@ export const sourcesApi = {
 export const configApi = {
   getAI: () => fetchApi<AIConfig>('/config/ai'),
 
-  updateAI: (data: Omit<AIConfig, 'updated_at'>) =>
-    fetchApi('/config/ai', {
+  updateAI: (data: AIConfigDraft & { keep_existing_api_key?: boolean }) =>
+    fetchApi<{ success: boolean; message: string }>('/config/ai', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
-  testAI: () => fetchApi<{ success: boolean; message: string }>('/config/ai/test', { method: 'POST' }),
+  testAI: (data: AIConfigDraft & { use_stored_api_key?: boolean }) =>
+    fetchApi<AIConnectionTestResult>('/config/ai/test', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   getSchedule: () => fetchApi<{ jobs: Array<{ id: string; name: string; next_run: string | null }> }>('/config/schedule'),
 
   updateSchedule: (hours: number[]) =>
-    fetchApi('/config/schedule', {
+    fetchApi<{ success: boolean; message: string }>('/config/schedule', {
       method: 'PUT',
       body: JSON.stringify(hours),
     }),
@@ -189,10 +237,17 @@ export const configApi = {
 
 // === Digest API ===
 export const digestsApi = {
-  list: (params?: { limit?: number; offset?: number }) => {
+  list: (params?: {
+    limit?: number;
+    offset?: number;
+    week_start?: string;
+    week_end?: string;
+  }) => {
     const searchParams = new URLSearchParams();
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.offset) searchParams.set('offset', String(params.offset));
+    if (params?.week_start) searchParams.set('week_start', params.week_start);
+    if (params?.week_end) searchParams.set('week_end', params.week_end);
     const query = searchParams.toString();
     return fetchApi<DigestListResponse>(`/digests${query ? `?${query}` : ''}`);
   },

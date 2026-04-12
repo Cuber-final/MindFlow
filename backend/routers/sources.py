@@ -25,14 +25,36 @@ class ParseUrlResponse(BaseModel):
 router = APIRouter(prefix="/api/sources", tags=["新闻源管理"])
 
 
+def _format_datetime(dt):
+    """Convert datetime/date/string/None values to response-safe strings."""
+    if dt is None:
+        return None
+    if isinstance(dt, str):
+        return dt
+    if hasattr(dt, "isoformat"):
+        return dt.isoformat()
+    return str(dt)
+
+
+def _source_to_response(source: dict) -> dict:
+    """Convert database source dict to response-safe payload."""
+    result = dict(source)
+    if result.get("config") and isinstance(result["config"], str):
+        try:
+            result["config"] = json.loads(result["config"])
+        except json.JSONDecodeError:
+            result["config"] = {}
+    result["created_at"] = _format_datetime(result.get("created_at"))
+    result["updated_at"] = _format_datetime(result.get("updated_at"))
+    result["last_fetch_at"] = _format_datetime(result.get("last_fetch_at"))
+    return result
+
+
 @router.get("", response_model=list[NewsSourceResponse])
 async def list_sources():
     """获取所有新闻源"""
     sources = await get_all_sources()
-    for s in sources:
-        if s.get("config") and isinstance(s["config"], str):
-            s["config"] = json.loads(s["config"])
-    return sources
+    return [_source_to_response(s) for s in sources]
 
 
 @router.post("/parse-url", response_model=ParseUrlResponse)
@@ -87,9 +109,7 @@ async def add_source(source: NewsSourceCreate):
         config=source.config
     )
     result = await get_source_by_id(source_id)
-    if result and result.get("config") and isinstance(result["config"], str):
-        result["config"] = json.loads(result["config"])
-    return result
+    return _source_to_response(result)
 
 
 @router.get("/{source_id}", response_model=NewsSourceResponse)
@@ -98,9 +118,7 @@ async def get_source(source_id: int):
     source = await get_source_by_id(source_id)
     if not source:
         raise HTTPException(status_code=404, detail="新闻源不存在")
-    if source.get("config") and isinstance(source["config"], str):
-        source["config"] = json.loads(source["config"])
-    return source
+    return _source_to_response(source)
 
 
 @router.put("/{source_id}", response_model=NewsSourceResponse)
@@ -114,9 +132,7 @@ async def modify_source(source_id: int, update: NewsSourceUpdate):
     await update_source(source_id, **update_data)
 
     result = await get_source_by_id(source_id)
-    if result and result.get("config") and isinstance(result["config"], str):
-        result["config"] = json.loads(result["config"])
-    return result
+    return _source_to_response(result)
 
 
 @router.delete("/{source_id}")

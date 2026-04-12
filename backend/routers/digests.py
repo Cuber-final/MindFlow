@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from datetime import date, datetime
 
 from schemas import (
     DailyDigestResponse,
+    DigestListResponse,
     DigestGenerateRequest,
     AnchorPointResponse
 )
@@ -11,6 +12,7 @@ from database import (
     get_digest_by_date,
     get_latest_digest,
     get_digests,
+    get_digests_count,
     get_anchors,
     get_all_anchors_for_digest,
     create_digest,
@@ -23,11 +25,38 @@ from services.ai import extract_anchor, synthesize_digest
 router = APIRouter(prefix="/api/digests", tags=["digests"])
 
 
-@router.get("", response_model=list[DailyDigestResponse])
-async def list_digests(limit: int = 30, offset: int = 0):
+@router.get("", response_model=DigestListResponse)
+async def list_digests(
+    limit: int = Query(default=30, ge=1, le=90),
+    offset: int = Query(default=0, ge=0),
+    week_start: Optional[date] = None,
+    week_end: Optional[date] = None
+):
     """获取简报列表"""
-    digests = await get_digests(limit=limit, offset=offset)
-    return [_format_digest_response(d) for d in digests]
+    if week_start and week_end and week_start > week_end:
+        raise HTTPException(status_code=400, detail="week_start 不能晚于 week_end")
+
+    digests = await get_digests(
+        limit=limit,
+        offset=offset,
+        week_start=week_start,
+        week_end=week_end
+    )
+    total = await get_digests_count(week_start=week_start, week_end=week_end)
+    items = [_format_digest_response(d) for d in digests]
+    has_more = offset + len(items) < total
+    next_offset = offset + len(items) if has_more else None
+
+    return {
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": has_more,
+        "next_offset": next_offset,
+        "week_start": week_start.isoformat() if week_start else None,
+        "week_end": week_end.isoformat() if week_end else None,
+    }
 
 
 @router.get("/latest", response_model=Optional[DailyDigestResponse])
@@ -144,15 +173,21 @@ async def extract_anchors_from_article(article_id: int):
 
 def _format_digest_response(digest: dict) -> dict:
     """Format digest for API response"""
+    raw_date = digest["date"]
+    raw_created_at = digest.get("created_at")
     return {
         "id": digest["id"],
-        "date": digest["date"],
+        "date": raw_date.isoformat() if hasattr(raw_date, "isoformat") else str(raw_date),
         "title": digest["title"],
         "overview": digest.get("overview", ""),
         "sections": digest.get("sections", []),
         "total_articles_processed": digest.get("total_articles_processed", 0),
         "anchor_count": digest.get("anchor_count", 0),
-        "created_at": digest.get("created_at")
+        "created_at": (
+            raw_created_at.isoformat()
+            if hasattr(raw_created_at, "isoformat")
+            else raw_created_at
+        ),
     }
 
 

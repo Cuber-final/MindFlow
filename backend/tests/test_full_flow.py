@@ -62,23 +62,28 @@ class TestArticleFetching:
     def test_fetch_source_articles_mock(self, client, mock_source):
         """Test fetching articles with mocked MPText API"""
         with patch("routers.sources.get_source_by_id", return_value=mock_source):
-            with patch("services.crawler.get_api_key", return_value="mock_key"):
-                with patch("services.crawler.http_get_with_retry") as mock_get:
-                    mock_get.return_value = {
-                        "ret": 0,
-                        "errmsg": "ok",
-                        "articles": [{
-                            "mid": "test_article_1",
-                            "title": "测试文章：RAG技术详解",
-                            "link": "https://mp.weixin.qq.com/s/test1",
-                            "update_time": 1712600000,
-                            "cover": ""
-                        }]
-                    }
-                    response = client.post("/api/sources/1/fetch")
-                    assert response.status_code == 200
-                    data = response.json()
-                    assert "articles_added" in data or "success" in data
+            with patch("services.crawler.get_source_by_id", new=AsyncMock(return_value=mock_source)):
+                with patch("services.crawler.get_article_by_external_id", new=AsyncMock(return_value=None)):
+                    with patch("services.crawler.create_article", new=AsyncMock(return_value=1)):
+                        with patch("services.crawler.update_source_fetch_time", new=AsyncMock(return_value=None)):
+                            with patch("services.crawler.add_fetch_log", new=AsyncMock(return_value=None)):
+                                with patch("services.crawler.get_api_key", return_value="mock_key"):
+                                    with patch("services.crawler.http_get_with_retry") as mock_get:
+                                        mock_get.return_value = {
+                                            "ret": 0,
+                                            "errmsg": "ok",
+                                            "articles": [{
+                                                "mid": "test_article_1",
+                                                "title": "测试文章：RAG技术详解",
+                                                "link": "https://mp.weixin.qq.com/s/test1",
+                                                "update_time": 1712600000,
+                                                "cover": ""
+                                            }]
+                                        }
+                                        response = client.post("/api/sources/1/fetch")
+                                        assert response.status_code == 200
+                                        data = response.json()
+                                        assert "articles_added" in data or "success" in data
 
 
 class TestDigestFlowWithMocks:
@@ -136,21 +141,23 @@ class TestInterestLearning:
 
     def test_get_interest_tags(self, client):
         """Test getting interest tags"""
-        response = client.get("/api/interests/tags")
-        assert response.status_code == 200
+        with patch("routers.interests.get_all_interest_tags", new=AsyncMock(return_value=[])):
+            response = client.get("/api/interests/tags")
+            assert response.status_code == 200
 
     def test_record_feedback(self, client):
         """Test recording feedback"""
-        response = client.post(
-            "/api/behavior/feedback",
-            json={
-                "digest_id": 1,
-                "anchor_id": 1,
-                "action": "click"
-            }
-        )
-        # May fail due to DB constraints, but endpoint should be accessible
-        assert response.status_code in [200, 201, 400, 404, 500]
+        with patch("routers.behavior.get_anchor_by_id", new=AsyncMock(return_value={"id": 1})):
+            with patch("routers.behavior.create_digest_feedback", new=AsyncMock(return_value=1)):
+                response = client.post(
+                    "/api/behavior/feedback",
+                    json={
+                        "digest_id": 1,
+                        "anchor_id": 1,
+                        "action": "click"
+                    }
+                )
+                assert response.status_code in [200, 201]
 
 
 class TestAPIErrors:
@@ -163,27 +170,43 @@ class TestAPIErrors:
 
     def test_source_not_found(self, client):
         """Test 404 for non-existent source"""
-        response = client.get("/api/sources/99999")
-        assert response.status_code == 404
+        with patch("routers.sources.get_source_by_id", new=AsyncMock(return_value=None)):
+            response = client.get("/api/sources/99999")
+            assert response.status_code == 404
 
     def test_article_not_found(self, client):
         """Test 404 for non-existent article"""
-        response = client.get("/api/articles/99999")
-        assert response.status_code == 404
+        with patch("routers.articles.get_article_by_id", new=AsyncMock(return_value=None)):
+            response = client.get("/api/articles/99999")
+            assert response.status_code == 404
 
     def test_invalid_source_type(self, client):
         """Test creating source with invalid type"""
-        response = client.post(
-            "/api/sources",
-            json={
-                "name": "测试",
-                "source_type": "invalid_type",
-                "api_base_url": "https://test.com",
-                "auth_key": "",
-                "config": {}
-            }
-        )
-        assert response.status_code in [200, 201, 422]
+        created_source = {
+            "id": 1,
+            "name": "测试",
+            "source_type": "invalid_type",
+            "api_base_url": "https://test.com",
+            "auth_key": "",
+            "config": "{}",
+            "created_at": "2026-04-12 00:00:00",
+            "updated_at": "2026-04-12 00:00:00",
+            "last_fetch_at": None,
+            "article_count": 0,
+        }
+        with patch("routers.sources.create_source", new=AsyncMock(return_value=1)):
+            with patch("routers.sources.get_source_by_id", new=AsyncMock(return_value=created_source)):
+                response = client.post(
+                    "/api/sources",
+                    json={
+                        "name": "测试",
+                        "source_type": "invalid_type",
+                        "api_base_url": "https://test.com",
+                        "auth_key": "",
+                        "config": {}
+                    }
+                )
+                assert response.status_code in [200, 201, 422]
 
 
 if __name__ == "__main__":

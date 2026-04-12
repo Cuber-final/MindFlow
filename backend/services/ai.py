@@ -1,7 +1,9 @@
 import httpx
 import json
+import inspect
 from openai import AsyncOpenAI
 from database import get_ai_config
+from typing import Optional, Dict, Any
 
 
 # === AI Prompts ===
@@ -82,20 +84,49 @@ PROMPT_DOMAIN_CLASSIFY = """将以下标签分类到对应的领域：
 }}"""
 
 
-async def get_openai_client() -> AsyncOpenAI:
-    """Get configured OpenAI-compatible client"""
-    config = get_ai_config()
+async def _maybe_await(value: Any) -> Any:
+    """Resolve AsyncMock/coroutine values without double-awaiting plain objects."""
+    if inspect.isawaitable(value):
+        return await value
+    return value
+
+
+async def _resolve_ai_config(config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Resolve config from explicit input or storage and normalize to a dict."""
+    resolved_config = config if config is not None else get_ai_config()
+    resolved_config = await _maybe_await(resolved_config)
+
+    if resolved_config is None:
+        return {}
+
+    if isinstance(resolved_config, dict):
+        return resolved_config
+
+    if hasattr(resolved_config, "model_dump"):
+        return resolved_config.model_dump()
+
+    if hasattr(resolved_config, "__dict__"):
+        return dict(resolved_config.__dict__)
+
+    return {}
+
+
+async def get_openai_client(config: Optional[Dict[str, Any]] = None) -> AsyncOpenAI:
+    """Get configured OpenAI-compatible client."""
+    resolved_config = await _resolve_ai_config(config)
+    if not resolved_config or not resolved_config.get("api_key"):
+        raise ValueError("AI 配置未完成，请在设置页面配置 API Key")
     return AsyncOpenAI(
-        api_key=config["api_key"],
-        base_url=config["base_url"]
+        api_key=resolved_config["api_key"],
+        base_url=resolved_config.get("base_url")
     )
 
 
 async def summarize_text(title: str, content: str, max_length: int = 150) -> str:
     """Generate AI summary for article content"""
-    config = get_ai_config()
+    config = await _resolve_ai_config()
 
-    if not config or not config["api_key"]:
+    if not config or not config.get("api_key"):
         return "AI 配置未完成，请在设置页面配置 API Key"
 
     # Truncate content if too long
@@ -110,7 +141,7 @@ async def summarize_text(title: str, content: str, max_length: int = 150) -> str
 请直接输出总结，不要添加任何前缀或解释："""
 
     try:
-        client = await get_openai_client()
+        client = await get_openai_client(config)
         response = await client.chat.completions.create(
             model=config["model"],
             messages=[
@@ -128,9 +159,9 @@ async def summarize_text(title: str, content: str, max_length: int = 150) -> str
 
 async def extract_anchor(title: str, content: str, article_link: str = "", source_name: str = "") -> dict:
     """Extract anchor point from article using AI"""
-    config = get_ai_config()
+    config = await _resolve_ai_config()
 
-    if not config or not config["api_key"]:
+    if not config or not config.get("api_key"):
         return {
             "title": title[:20],
             "content": content[:200],
@@ -146,7 +177,7 @@ async def extract_anchor(title: str, content: str, article_link: str = "", sourc
     prompt = PROMPT_ANCHOR_EXTRACT.format(title=title, content=truncated_content)
 
     try:
-        client = await get_openai_client()
+        client = await get_openai_client(config)
         response = await client.chat.completions.create(
             model=config["model"],
             messages=[
@@ -199,9 +230,9 @@ async def extract_anchor(title: str, content: str, article_link: str = "", sourc
 
 async def synthesize_digest(anchors: list[dict], user_interests: list[dict] = None) -> dict:
     """Synthesize daily digest from anchors using AI"""
-    config = get_ai_config()
+    config = await _resolve_ai_config()
 
-    if not config or not config["api_key"]:
+    if not config or not config.get("api_key"):
         return {
             "overview": "AI配置未完成，无法生成简报",
             "sections": []
@@ -229,7 +260,7 @@ async def synthesize_digest(anchors: list[dict], user_interests: list[dict] = No
     )
 
     try:
-        client = await get_openai_client()
+        client = await get_openai_client(config)
         response = await client.chat.completions.create(
             model=config["model"],
             messages=[
@@ -261,12 +292,16 @@ async def synthesize_digest(anchors: list[dict], user_interests: list[dict] = No
         }
 
 
-async def test_ai_connection() -> tuple[bool, str]:
-    """Test AI API connection"""
+async def test_ai_connection(config_override: Optional[Dict[str, Any]] = None) -> tuple[bool, str]:
+    """Test AI API connection."""
     try:
-        client = await get_openai_client()
+        config = await _resolve_ai_config(config_override)
+        if not config or not config.get("api_key"):
+            return False, "API Key 未配置"
+
+        client = await get_openai_client(config)
         response = await client.chat.completions.create(
-            model=get_ai_config()["model"],
+            model=config["model"],
             messages=[{"role": "user", "content": "Hi"}],
             max_tokens=10
         )

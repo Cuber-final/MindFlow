@@ -72,16 +72,37 @@ class ArticleListResponse(BaseModel):
 # AI Config Models
 class AIConfigUpdate(BaseModel):
     provider: str
-    api_key: str
+    api_key: Optional[str] = None
     base_url: str
     model: str
+    keep_existing_api_key: bool = True
+
+
+class AIConfigTestRequest(BaseModel):
+    provider: Optional[str] = None
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    model: Optional[str] = None
+    use_stored_api_key: bool = True
 
 
 class AIConfigResponse(BaseModel):
     provider: str
     base_url: str
     model: str
+    has_api_key: bool = False
     updated_at: Optional[str]
+
+
+class AIConfigSaveResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class AIConfigTestResponse(BaseModel):
+    success: bool
+    message: str
+    used_stored_api_key: bool = False
 
 
 # Fetch Response
@@ -187,6 +208,17 @@ class DailyDigestResponse(BaseModel):
     total_articles_processed: int
     anchor_count: int
     created_at: Optional[str] = None
+
+
+class DigestListResponse(BaseModel):
+    items: list[DailyDigestResponse]
+    total: int
+    limit: int
+    offset: int
+    has_more: bool
+    next_offset: Optional[int] = None
+    week_start: Optional[str] = None
+    week_end: Optional[str] = None
 
 
 class DigestGenerateRequest(BaseModel):

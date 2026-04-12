@@ -84,7 +84,7 @@ def init_db_sync():
 # CRUD Functions - Async SQLAlchemy Pattern
 # ============================================================================
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, date
 from models import (
     NewsSource, Article, AnchorPoint, DailyDigest,
     UserInterestTag, UserBehaviorLog, DigestFeedback, AIConfig, FetchLog
@@ -270,21 +270,38 @@ async def get_ai_config() -> Dict[str, Any]:
     async with get_db() as session:
         result = await session.execute(select(AIConfig).where(AIConfig.id == 1))
         config = result.scalar_one_or_none()
-        return config.__dict__ if config else {}
+        return {k: v for k, v in config.__dict__.items() if not k.startswith("_")} if config else {}
 
 
-async def update_ai_config(provider: str, api_key: str, base_url: str, model: str):
-    """Update AI configuration."""
+async def update_ai_config(
+    provider: str,
+    base_url: str,
+    model: str,
+    api_key: Optional[str] = None,
+    keep_existing_api_key: bool = True
+):
+    """Update AI configuration with optional API key replacement."""
     async with get_db() as session:
         result = await session.execute(select(AIConfig).where(AIConfig.id == 1))
         config = result.scalar_one_or_none()
         if config:
             config.provider = provider
-            config.api_key = api_key
             config.base_url = base_url
             config.model = model
+            if api_key:
+                config.api_key = api_key
+            elif not keep_existing_api_key:
+                config.api_key = ""
         else:
-            config = AIConfig(id=1, provider=provider, api_key=api_key, base_url=base_url, model=model)
+            if not api_key:
+                raise ValueError("api_key_required_for_first_configuration")
+            config = AIConfig(
+                id=1,
+                provider=provider,
+                api_key=api_key,
+                base_url=base_url,
+                model=model
+            )
             session.add(config)
 
 
@@ -414,7 +431,7 @@ async def get_digest_by_date(date_str: str) -> Optional[Dict[str, Any]]:
             select(DailyDigest).where(DailyDigest.date == date.fromisoformat(date_str))
         )
         digest = result.scalar_one_or_none()
-        return digest.__dict__ if digest else None
+        return {k: v for k, v in digest.__dict__.items() if not k.startswith("_")} if digest else None
 
 
 async def get_latest_digest() -> Optional[Dict[str, Any]]:
@@ -424,17 +441,42 @@ async def get_latest_digest() -> Optional[Dict[str, Any]]:
             select(DailyDigest).order_by(DailyDigest.date.desc()).limit(1)
         )
         digest = result.scalar_one_or_none()
-        return digest.__dict__ if digest else None
+        return {k: v for k, v in digest.__dict__.items() if not k.startswith("_")} if digest else None
 
 
-async def get_digests(limit: int = 30, offset: int = 0) -> List[Dict[str, Any]]:
-    """Get daily digests ordered by date descending."""
+async def get_digests(
+    limit: int = 30,
+    offset: int = 0,
+    week_start: Optional[date] = None,
+    week_end: Optional[date] = None
+) -> List[Dict[str, Any]]:
+    """Get daily digests ordered by date descending with optional date range."""
     async with get_db() as session:
+        query = select(DailyDigest)
+        if week_start:
+            query = query.where(DailyDigest.date >= week_start)
+        if week_end:
+            query = query.where(DailyDigest.date <= week_end)
         result = await session.execute(
-            select(DailyDigest).order_by(DailyDigest.date.desc()).limit(limit).offset(offset)
+            query.order_by(DailyDigest.date.desc()).limit(limit).offset(offset)
         )
         digests = result.scalars().all()
-        return [d.__dict__ for d in digests]
+        return [{k: v for k, v in d.__dict__.items() if not k.startswith("_")} for d in digests]
+
+
+async def get_digests_count(
+    week_start: Optional[date] = None,
+    week_end: Optional[date] = None
+) -> int:
+    """Get digest count with optional date range."""
+    async with get_db() as session:
+        query = select(func.count(DailyDigest.id))
+        if week_start:
+            query = query.where(DailyDigest.date >= week_start)
+        if week_end:
+            query = query.where(DailyDigest.date <= week_end)
+        result = await session.execute(query)
+        return int(result.scalar_one())
 
 
 async def get_all_anchors_for_digest() -> List[Dict[str, Any]]:
