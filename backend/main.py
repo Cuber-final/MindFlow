@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 load_dotenv(Path(__file__).parent / ".env")
 
 from database import init_db, check_db_health
-from routers import sources, articles, config, digests, interests, behavior
+from routers import sources, articles, config, digests, interests, behavior, now
 from services.scheduler import start_scheduler, stop_scheduler
 
 
@@ -45,6 +45,7 @@ app.include_router(config.router)
 app.include_router(digests.router)
 app.include_router(interests.router)
 app.include_router(behavior.router)
+app.include_router(now.router)
 
 
 @app.get("/")

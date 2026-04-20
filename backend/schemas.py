@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, date
 from enum import Enum
@@ -67,6 +67,67 @@ class ArticleListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class NowListItemResponse(BaseModel):
+    anchor_id: int
+    article_id: Optional[int] = None
+    title: Optional[str] = None
+    excerpt: Optional[str] = None
+    source_name: Optional[str] = None
+    source_article_link: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+    published_at: Optional[str] = None
+    significance: Optional[float] = None
+    zone: Optional[str] = None
+    priority_score: float
+    priority_reason: str
+    ai_summary: str
+    is_read: Optional[bool] = None
+    is_processed: bool
+    read_at: Optional[str] = None
+    processed_at: Optional[str] = None
+
+
+class NowListResponse(BaseModel):
+    items: list[NowListItemResponse] = Field(default_factory=list)
+    generated_at: Optional[str] = None
+
+
+class NowDetailResponse(BaseModel):
+    anchor_id: int
+    article_id: Optional[int] = None
+    title: Optional[str] = None
+    source_name: Optional[str] = None
+    source_article_link: Optional[str] = None
+    zone: Optional[str] = None
+    priority_score: float
+    priority_reason: str
+    ai_summary: str
+    dialectical_analysis: Optional[str] = None
+    body_markdown: str
+    article_title: Optional[str] = None
+    article_link: Optional[str] = None
+    published_at: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+    is_read: Optional[bool] = None
+    is_processed: bool
+    read_at: Optional[str] = None
+    processed_at: Optional[str] = None
+
+
+class NowStateUpdateRequest(BaseModel):
+    mark_read: bool = False
+    mark_processed: bool = False
+
+
+class NowStateResponse(BaseModel):
+    anchor_id: int
+    article_id: Optional[int] = None
+    is_read: bool
+    is_processed: bool
+    read_at: Optional[str] = None
+    processed_at: Optional[str] = None
 
 
 # AI Config Models

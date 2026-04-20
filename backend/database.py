@@ -84,12 +84,12 @@ def init_db_sync():
 # CRUD Functions - Async SQLAlchemy Pattern
 # ============================================================================
 from typing import Optional, List, Dict, Any
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from models import (
     NewsSource, Article, AnchorPoint, DailyDigest,
     UserInterestTag, UserBehaviorLog, DigestFeedback, AIConfig, FetchLog
 )
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 
 
 # --------------------------------------------------------------------------
@@ -259,6 +259,170 @@ async def update_article_summary(article_id: int, summary: str):
         article = result.scalar_one_or_none()
         if article:
             article.summary = summary
+
+
+def _row_to_mapping(row) -> Optional[Dict[str, Any]]:
+    """Convert SQLAlchemy row objects produced by explicit joins to plain dicts."""
+    if row is None:
+        return None
+    return dict(row._mapping)
+
+
+async def get_recent_now_candidates(hours: int = 48, limit: int = 60) -> List[Dict[str, Any]]:
+    """Get recent anchor/article rows for the Now workbench using explicit joins."""
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
+
+    async with get_db() as session:
+        result = await session.execute(
+            select(
+                AnchorPoint.id.label("anchor_id"),
+                AnchorPoint.article_id.label("anchor_article_id"),
+                AnchorPoint.title.label("anchor_title"),
+                AnchorPoint.content.label("anchor_content"),
+                AnchorPoint.dialectical_analysis.label("dialectical_analysis"),
+                AnchorPoint.anchor_type.label("anchor_type"),
+                AnchorPoint.significance.label("significance"),
+                AnchorPoint.source_article_link.label("source_article_link"),
+                AnchorPoint.source_name.label("anchor_source_name"),
+                AnchorPoint.tags.label("tags"),
+                AnchorPoint.related_tag_weights.label("related_tag_weights"),
+                AnchorPoint.created_at.label("anchor_created_at"),
+                Article.id.label("article_id"),
+                Article.source_id.label("source_id"),
+                Article.title.label("article_title"),
+                Article.link.label("article_link"),
+                Article.content.label("article_content"),
+                Article.summary.label("article_summary"),
+                Article.author.label("article_author"),
+                Article.published_at.label("published_at"),
+                Article.fetched_at.label("fetched_at"),
+                Article.read_at.label("read_at"),
+                Article.processed_at.label("processed_at"),
+                Article.last_opened_at.label("last_opened_at"),
+                NewsSource.name.label("source_name"),
+            )
+            .select_from(AnchorPoint)
+            .join(Article, AnchorPoint.article_id == Article.id)
+            .outerjoin(NewsSource, Article.source_id == NewsSource.id)
+            .where(
+                or_(
+                    AnchorPoint.created_at >= cutoff,
+                    Article.fetched_at >= cutoff,
+                    Article.published_at >= cutoff,
+                )
+            )
+            .order_by(
+                func.coalesce(Article.published_at, Article.fetched_at, AnchorPoint.created_at).desc(),
+                AnchorPoint.significance.desc(),
+            )
+            .limit(limit)
+        )
+        return [_row_to_mapping(row) for row in result.all()]
+
+
+async def get_now_detail_row(anchor_id: int) -> Optional[Dict[str, Any]]:
+    """Get one explicit joined row for a Now workbench detail view."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(
+                AnchorPoint.id.label("anchor_id"),
+                AnchorPoint.article_id.label("anchor_article_id"),
+                AnchorPoint.title.label("anchor_title"),
+                AnchorPoint.content.label("anchor_content"),
+                AnchorPoint.dialectical_analysis.label("dialectical_analysis"),
+                AnchorPoint.anchor_type.label("anchor_type"),
+                AnchorPoint.significance.label("significance"),
+                AnchorPoint.source_article_link.label("source_article_link"),
+                AnchorPoint.source_name.label("anchor_source_name"),
+                AnchorPoint.tags.label("tags"),
+                AnchorPoint.related_tag_weights.label("related_tag_weights"),
+                AnchorPoint.created_at.label("anchor_created_at"),
+                Article.id.label("article_id"),
+                Article.source_id.label("source_id"),
+                Article.title.label("article_title"),
+                Article.link.label("article_link"),
+                Article.content.label("article_content"),
+                Article.summary.label("article_summary"),
+                Article.author.label("article_author"),
+                Article.published_at.label("published_at"),
+                Article.fetched_at.label("fetched_at"),
+                Article.read_at.label("read_at"),
+                Article.processed_at.label("processed_at"),
+                Article.last_opened_at.label("last_opened_at"),
+                NewsSource.name.label("source_name"),
+            )
+            .select_from(AnchorPoint)
+            .join(Article, AnchorPoint.article_id == Article.id)
+            .outerjoin(NewsSource, Article.source_id == NewsSource.id)
+            .where(AnchorPoint.id == anchor_id)
+            .limit(1)
+        )
+        return _row_to_mapping(result.first())
+
+
+async def touch_article_last_opened_by_anchor(anchor_id: int) -> Optional[Dict[str, Any]]:
+    """Update last_opened_at for the article behind an anchor and return current state."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(Article)
+            .select_from(Article)
+            .join(AnchorPoint, AnchorPoint.article_id == Article.id)
+            .where(AnchorPoint.id == anchor_id)
+        )
+        article = result.scalar_one_or_none()
+        if not article:
+            return None
+
+        article.last_opened_at = datetime.utcnow()
+        await session.flush()
+
+        return {
+            "anchor_id": anchor_id,
+            "article_id": article.id,
+            "last_opened_at": article.last_opened_at,
+            "read_at": article.read_at,
+            "processed_at": article.processed_at,
+        }
+
+
+async def update_article_workbench_state_by_anchor(
+    anchor_id: int,
+    *,
+    mark_read: bool = False,
+    mark_processed: bool = False,
+) -> Optional[Dict[str, Any]]:
+    """Update article workbench state for an anchor using explicit joins."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(Article)
+            .select_from(Article)
+            .join(AnchorPoint, AnchorPoint.article_id == Article.id)
+            .where(AnchorPoint.id == anchor_id)
+        )
+        article = result.scalar_one_or_none()
+        if not article:
+            return None
+
+        now = datetime.utcnow()
+        if mark_read and article.read_at is None:
+            article.read_at = now
+        if mark_processed:
+            if article.processed_at is None:
+                article.processed_at = now
+            if article.read_at is None:
+                article.read_at = now
+        if mark_read or mark_processed:
+            article.last_opened_at = now
+
+        await session.flush()
+
+        return {
+            "anchor_id": anchor_id,
+            "article_id": article.id,
+            "read_at": article.read_at,
+            "processed_at": article.processed_at,
+            "last_opened_at": article.last_opened_at,
+        }
 
 
 # --------------------------------------------------------------------------

@@ -32,6 +32,9 @@ class Article(Base):
     author = Column(String, default="")
     published_at = Column(DateTime)
     fetched_at = Column(DateTime, default=datetime.utcnow)
+    read_at = Column(DateTime)
+    processed_at = Column(DateTime)
+    last_opened_at = Column(DateTime)
 
 
 class AnchorPoint(Base):
