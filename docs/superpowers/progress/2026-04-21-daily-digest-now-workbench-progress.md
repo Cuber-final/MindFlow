@@ -34,6 +34,37 @@
   - spec review ✅
   - code review ✅
 
+### Task 3 — Switch frontend routing and navigation semantics
+- **Commit:** `4dc9b22`
+- Updated:
+  - `frontend/src/App.tsx`
+  - `frontend/src/components/Sidebar.tsx`
+  - `frontend/src/components/TopNav.tsx`
+  - `frontend/src/components/MobileNav.tsx`
+  - `frontend/src/pages/Now.tsx`
+- Result:
+  - `/` now redirects to `/daily-digest`
+  - `/newsletter` remains as a compatibility redirect
+  - `/now` and `/now/:anchorId` are live
+  - nav labels now use `Daily Digest / Now / Interests / Sources / Settings`
+  - nested `/now/:anchorId` keeps the `Now` nav item active
+- Task 3 review status:
+  - spec review ✅
+  - code review ✅
+
+### Task 4 — Extend the frontend API client with `nowApi`
+- **Commit:** `4dc9b22`
+- Updated:
+  - `frontend/src/api/newsletter.ts`
+- Result:
+  - added `nowApi.list`
+  - added `nowApi.getDetail`
+  - added `nowApi.updateState`
+  - added stricter client-facing `NowItem` / `NowDetail` normalization to support the upcoming real workbench UI
+- Task 4 review status:
+  - spec review ✅
+  - code review ✅
+
 ## Verification Snapshot
 
 ### Task 2 verification that passed
@@ -61,14 +92,21 @@ Result:
 - cannot collect because `pytest_asyncio` is missing in the current environment
 - not treated as a Task 2 blocker because no new dependency installation was requested
 
+### Task 3 / Task 4 verification that passed
+```bash
+cd frontend
+npm run build
+```
+
+Result:
+- frontend production build ✅
+
 ## Remaining Work
 
 ### Next up
-1. **Task 3** — switch frontend route semantics to `Daily Digest` + `Now`
-2. **Task 4** — extend frontend API client with `nowApi`
-3. **Task 5** — change Digest cards to internal detail entry
-4. **Task 6** — build the real `Now` three-column workbench
-5. **Task 7** — update README and run end-to-end verification
+1. **Task 5** — change Digest cards to internal detail entry
+2. **Task 6** — build the real `Now` three-column workbench
+3. **Task 7** — update README and run end-to-end verification
 
 ## Important Implementation Notes
 
