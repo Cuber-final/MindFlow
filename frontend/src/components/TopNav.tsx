@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
 
 const navItems = [
-  { path: '/newsletter', label: 'Briefing' },
+  { path: '/daily-digest', label: 'Daily Digest' },
+  { path: '/now', label: 'Now' },
   { path: '/interests', label: 'Interests' },
   { path: '/sources', label: 'Sources' },
   { path: '/settings', label: 'Settings' },
@@ -20,7 +21,7 @@ export default function TopNav() {
           </Link>
           <nav className="hidden md:flex gap-6">
             {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
               return (
                 <Link
                   key={item.path}

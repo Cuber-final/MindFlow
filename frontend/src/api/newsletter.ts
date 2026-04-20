@@ -175,6 +175,141 @@ export interface DigestFeedback {
   action: BehaviorAction;
 }
 
+// === Now Workbench Types ===
+interface RawNowItem {
+  anchor_id: number;
+  article_id?: number | null;
+  title?: string | null;
+  excerpt?: string | null;
+  source_name?: string | null;
+  source_article_link?: string | null;
+  tags?: string[];
+  published_at?: string | null;
+  significance?: number | null;
+  zone?: 'main' | 'explore' | 'discover' | string | null;
+  priority_score: number;
+  priority_reason: string;
+  ai_summary: string;
+  is_read?: boolean | null;
+  is_processed: boolean;
+  read_at?: string | null;
+  processed_at?: string | null;
+}
+
+export interface NowItem {
+  anchor_id: number;
+  article_id: number;
+  title: string;
+  excerpt: string;
+  source_name: string;
+  source_article_link: string;
+  tags: string[];
+  published_at: string | null;
+  significance: number;
+  zone: 'main' | 'explore' | 'discover' | string;
+  priority_score: number;
+  priority_reason: string;
+  ai_summary: string;
+  is_read: boolean;
+  is_processed: boolean;
+  read_at: string | null;
+  processed_at: string | null;
+}
+
+export interface NowListResponse {
+  items: NowItem[];
+  generated_at?: string | null;
+}
+
+interface RawNowDetail extends Omit<RawNowItem, 'excerpt' | 'significance'> {
+  dialectical_analysis?: string | null;
+  body_markdown: string;
+  article_title?: string | null;
+  article_link?: string | null;
+}
+
+export interface NowDetail {
+  anchor_id: number;
+  article_id: number;
+  title: string;
+  source_name: string;
+  source_article_link: string;
+  zone: string;
+  priority_score: number;
+  priority_reason: string;
+  ai_summary: string;
+  dialectical_analysis: string | null;
+  body_markdown: string;
+  article_title?: string | null;
+  article_link?: string | null;
+  published_at: string | null;
+  tags: string[];
+  is_read: boolean;
+  is_processed: boolean;
+  read_at: string | null;
+  processed_at: string | null;
+}
+
+export interface NowStateUpdatePayload {
+  mark_read?: boolean;
+  mark_processed?: boolean;
+}
+
+export interface NowStateResponse {
+  anchor_id: number;
+  article_id?: number | null;
+  is_read: boolean;
+  is_processed: boolean;
+  read_at?: string | null;
+  processed_at?: string | null;
+}
+
+function normalizeNowItem(item: RawNowItem): NowItem {
+  return {
+    anchor_id: item.anchor_id,
+    article_id: item.article_id ?? 0,
+    title: item.title ?? 'Untitled',
+    excerpt: item.excerpt ?? item.ai_summary,
+    source_name: item.source_name ?? 'Unknown source',
+    source_article_link: item.source_article_link ?? '',
+    tags: Array.isArray(item.tags) ? item.tags : [],
+    published_at: item.published_at ?? null,
+    significance: item.significance ?? 0,
+    zone: item.zone ?? 'discover',
+    priority_score: item.priority_score,
+    priority_reason: item.priority_reason,
+    ai_summary: item.ai_summary,
+    is_read: Boolean(item.is_read),
+    is_processed: item.is_processed,
+    read_at: item.read_at ?? null,
+    processed_at: item.processed_at ?? null,
+  };
+}
+
+function normalizeNowDetail(detail: RawNowDetail): NowDetail {
+  return {
+    anchor_id: detail.anchor_id,
+    article_id: detail.article_id ?? 0,
+    title: detail.title ?? detail.article_title ?? 'Untitled',
+    source_name: detail.source_name ?? 'Unknown source',
+    source_article_link: detail.source_article_link ?? detail.article_link ?? '',
+    zone: detail.zone ?? 'discover',
+    priority_score: detail.priority_score,
+    priority_reason: detail.priority_reason,
+    ai_summary: detail.ai_summary,
+    dialectical_analysis: detail.dialectical_analysis ?? null,
+    body_markdown: detail.body_markdown,
+    article_title: detail.article_title ?? null,
+    article_link: detail.article_link ?? null,
+    published_at: detail.published_at ?? null,
+    tags: Array.isArray(detail.tags) ? detail.tags : [],
+    is_read: Boolean(detail.is_read),
+    is_processed: detail.is_processed,
+    read_at: detail.read_at ?? null,
+    processed_at: detail.processed_at ?? null,
+  };
+}
+
 // === Sources API ===
 export const sourcesApi = {
   list: () => fetchApi<NewsSource[]>('/sources'),
@@ -310,6 +445,28 @@ export const behaviorApi = {
   recordFeedback: (data: DigestFeedback) =>
     fetchApi<{ id: number; status: string }>('/behavior/feedback', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+// === Now API ===
+export const nowApi = {
+  list: (params?: { limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    const query = searchParams.toString();
+    return fetchApi<{ items: RawNowItem[]; generated_at?: string | null }>(`/now${query ? `?${query}` : ''}`).then((response) => ({
+      items: Array.isArray(response.items) ? response.items.map(normalizeNowItem) : [],
+      generated_at: response.generated_at ?? null,
+    }));
+  },
+
+  getDetail: (anchorId: number | string) =>
+    fetchApi<RawNowDetail>(`/now/${anchorId}`).then(normalizeNowDetail),
+
+  updateState: (anchorId: number | string, data: NowStateUpdatePayload) =>
+    fetchApi<NowStateResponse>(`/now/${anchorId}/state`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
 };

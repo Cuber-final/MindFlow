@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'react-router-dom';
 
 const navItems = [
-  { path: '/newsletter', label: 'Brief', icon: 'auto_awesome' },
+  { path: '/daily-digest', label: 'Daily Digest', icon: 'auto_awesome' },
+  { path: '/now', label: 'Now', icon: 'dashboard_customize' },
   { path: '/interests', label: 'Interests', icon: 'label_important' },
   { path: '/sources', label: 'Sources', icon: 'rss_feed' },
   { path: '/settings', label: 'Settings', icon: 'settings_suggest' },
@@ -13,7 +14,7 @@ export default function MobileNav() {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant/10 px-6 py-3 flex justify-between items-center z-50">
       {navItems.map((item) => {
-        const isActive = location.pathname === item.path;
+        const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
 
         return (
           <Link
