@@ -15,7 +15,6 @@ const zhCN: TranslationDictionary = {
     settings: '设置',
     searchPlaceholder: '搜索洞察...',
     curatedBrief: '精选每日简报',
-    newInsight: '新建洞察',
     help: '帮助',
     privacy: '隐私',
     user: '用户',

@@ -15,6 +15,8 @@
 - ✅ `Now` 三栏工作台已接入优先级队列、摘要阅读和状态流转
 - ✅ 前端 `fetchApi` 已兼容 `204 No Content`
 - ✅ Docker 部署下前端已通过 nginx 代理 `/api` 到后端，避免白屏和数据契约错读
+- ✅ 前端静态 UI 文案已支持中英文双语切换（TopNav `中 / EN` 按钮触发）
+- ✅ 语言偏好已持久化到 `localStorage(mindflow.locale)`，首次访问支持浏览器语言自动兜底
 
 ### 仍属于后续迭代的内容
 - ⏳ Exploration Zone / Surprise Box 的更深交互
@@ -42,6 +44,16 @@
 - **每日简报自动生成** - 定时抓取 + AI 锚点提取 + 简报合成
 - **显式 + 隐式反馈** - Show/Hide 按钮 + 行为信号驱动权重更新
 - **实时权重调整** - 基于信号衰减和多样性惩罚的自适应算法
+- **双语 UI 基础设施** - 内置 `I18nProvider/useI18n/t()`，覆盖核心页面与导航文案
+
+## 双语 UI（中文 / English）
+
+- 语言切换入口：顶部导航栏右侧 `中 / EN` 按钮
+- 切换机制：前端 `I18nProvider` + 词典映射（`frontend/src/i18n/`）
+- 持久化策略：写入 `localStorage` 的 `mindflow.locale`
+- 默认策略：优先读取已保存语言；若无保存值，则根据浏览器语言自动选择（`zh-*` -> 中文，否则英文）
+- 当前范围：导航壳层、Now、Daily Digest、Interests、Sources、Settings 等页面静态文案
+- 约束说明：产品 Logo `MindFlow` 保持不翻译
 
 ## 技术栈
 

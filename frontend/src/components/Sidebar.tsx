@@ -45,16 +45,8 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* New Insight Button */}
-      <div className="mt-8 px-2">
-        <button className="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary py-3 rounded-lg text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity">
-          <span className="material-symbols-outlined text-sm">edit</span>
-          {t('nav.newInsight')}
-        </button>
-      </div>
-
       {/* Footer */}
-      <div className="mt-auto pt-8 border-t border-outline-variant/10 flex flex-col gap-2">
+      <div className="mt-8 pt-8 border-t border-outline-variant/10 flex flex-col gap-2">
         <Link
           to="/help"
           className="flex items-center gap-3 px-3 py-1 text-secondary text-[11px] uppercase tracking-widest hover:translate-x-1 transition-transform"

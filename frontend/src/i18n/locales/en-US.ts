@@ -15,7 +15,6 @@ const enUS: TranslationDictionary = {
     settings: 'Settings',
     searchPlaceholder: 'Search insights...',
     curatedBrief: 'Curated Daily Brief',
-    newInsight: 'New Insight',
     help: 'Help',
     privacy: 'Privacy',
     user: 'User',
