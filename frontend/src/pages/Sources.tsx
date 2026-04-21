@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { sourcesApi, type NewsSource, type ParsedAccount } from '../api/newsletter';
 import dayjs from 'dayjs';
+import { useI18n } from '../i18n';
 
 type FetchModalStatus = 'loading' | 'success' | 'error';
 
@@ -14,6 +15,74 @@ interface FetchFeedbackState {
 }
 
 export default function Sources() {
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
+  const text = {
+    inputUrlRequired: isZh ? '请输入链接' : 'Please enter a URL',
+    invalidWechatUrl: isZh ? '请输入有效的微信公众号文章链接' : 'Please enter a valid WeChat article URL',
+    parseFailed: isZh ? '解析失败' : 'Failed to parse URL',
+    deleteSourceConfirm: isZh ? '确定要删除这个新闻源吗？' : 'Are you sure you want to delete this source?',
+    deleteFailed: isZh ? '删除失败' : 'Delete failed',
+    mpHints: isZh
+      ? ['请确认公众号 FakeID 是否有效且未被修改', '请确认 API 地址和认证配置可用']
+      : ['Please verify the WeChat FakeID is valid and unchanged', 'Please verify API endpoint and auth configuration'],
+    customHints: isZh
+      ? ['请确认该源 API 地址可访问', '请确认该源的认证参数和返回格式正确']
+      : ['Please verify the source API endpoint is reachable', 'Please verify auth parameters and response schema'],
+    fetchingSource: isZh ? '正在抓取 {name}，请稍候...' : 'Fetching {name}, please wait...',
+    sourceId: isZh ? '来源 ID' : 'Source ID',
+    sourceType: isZh ? '来源类型' : 'Source Type',
+    triggerTime: isZh ? '触发时间' : 'Triggered at',
+    addedArticles: isZh ? '新增文章' : 'Articles added',
+    fetchCompleted: isZh ? '抓取完成' : 'Fetch completed',
+    fetchFailed: isZh ? '抓取失败' : 'Fetch failed',
+    unknownError: isZh ? '未知错误' : 'Unknown error',
+    apiResponseException: isZh ? '接口响应异常' : 'API response error',
+    runtimeException: isZh ? '网络或运行时异常' : 'Network/runtime error',
+    fetchFailedWithReason: isZh ? '抓取失败：{reason}' : 'Fetch failed: {reason}',
+    batchCompletedWithFailures: isZh ? '批量抓取已完成（含失败项）' : 'Batch fetch completed (with failures)',
+    batchCompleted: isZh ? '批量抓取已完成' : 'Batch fetch completed',
+    processedSources: isZh ? '处理来源' : 'Processed sources',
+    success: isZh ? '成功' : 'Success',
+    failed: isZh ? '失败' : 'Failed',
+    sourceManagement: isZh ? '信源管理' : 'Source Management',
+    informationArchitecture: isZh ? '信息架构' : 'Information Architecture',
+    crawling: isZh ? '抓取中...' : 'Crawling...',
+    manualCrawlAll: isZh ? '手动抓取全部' : 'Manual Crawl All',
+    addNewSource: isZh ? '添加新信源' : 'Add New Source',
+    healthyLinks: isZh ? '健康连接' : 'Healthy Links',
+    active: isZh ? '活跃' : 'Active',
+    latency: isZh ? '延迟' : 'Latency',
+    avgCrawl: isZh ? '平均抓取' : 'Avg Crawl',
+    criticalIssues: isZh ? '关键问题' : 'Critical Issues',
+    actionRequired: isZh ? '需要处理' : 'Action required',
+    noActiveSignals: isZh ? '暂无活跃信号' : 'No Active Signals',
+    noActiveSignalsHint: isZh
+      ? '你的信息工作台当前较为安静。连接一个来源后，系统将开始抓取与整理。'
+      : 'Your atelier is currently quiet. Connect a source to begin the curation process and receive your first briefing.',
+    startConnection: isZh ? '开始连接' : 'Start Connection',
+    sourceIdentity: isZh ? '来源标识' : 'Source Identity',
+    type: isZh ? '类型' : 'Type',
+    lastIndexed: isZh ? '最近索引' : 'Last Indexed',
+    status: isZh ? '状态' : 'Status',
+    actions: isZh ? '操作' : 'Actions',
+    wechat: isZh ? '微信公众号' : 'WeChat',
+    custom: isZh ? '自定义' : 'Custom',
+    never: isZh ? '从未' : 'Never',
+    healthy: isZh ? '健康' : 'Healthy',
+    needsAttention: isZh ? '需关注' : 'Needs Attention',
+    fetchNow: isZh ? '立即抓取' : 'Fetch Now',
+    editSource: isZh ? '编辑来源' : 'Edit Source',
+    deleteSource: isZh ? '删除来源' : 'Delete Source',
+    ingestSignal: isZh ? '接入新信号' : 'Ingest New Signal',
+    ingestHint: isZh
+      ? '添加新的 URL、RSS 或社媒来源，系统会在索引前评估内容质量。'
+      : 'Add a new URL, RSS feed, or social profile to your digital atelier. Our crawlers will analyze the intellectual density before indexing.',
+    quickAddPlaceholder: isZh ? '粘贴微信公众号文章链接' : 'Paste a WeChat article URL',
+    parsing: isZh ? '解析中...' : 'Parsing...',
+    add: isZh ? '添加' : 'Add',
+    suggestions: isZh ? '建议' : 'Suggestions',
+  };
   const [sources, setSources] = useState<NewsSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -52,12 +121,12 @@ export default function Sources() {
 
   const handleQuickAdd = async () => {
     if (!quickAddUrl.trim()) {
-      setQuickAddError('请输入链接');
+      setQuickAddError(text.inputUrlRequired);
       return;
     }
 
     if (!quickAddUrl.includes('mp.weixin.qq.com')) {
-      setQuickAddError('请输入有效的微信公众号文章链接');
+      setQuickAddError(text.invalidWechatUrl);
       return;
     }
 
@@ -70,34 +139,28 @@ export default function Sources() {
       setShowUrlModal(true);
       setQuickAddUrl('');
     } catch (err) {
-      setQuickAddError(err instanceof Error ? err.message : '解析失败');
+      setQuickAddError(err instanceof Error ? err.message : text.parseFailed);
     } finally {
       setQuickAddLoading(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('确定要删除这个新闻源吗？')) return;
+    if (!confirm(text.deleteSourceConfirm)) return;
     try {
       await sourcesApi.delete(id);
       setSources(sources.filter((s) => s.id !== id));
     } catch (err) {
-      alert('删除失败');
+      alert(text.deleteFailed);
     }
   };
 
   const getSourceDebugHints = (source: NewsSource) => {
     if (source.source_type === 'mptext') {
-      return [
-        '请确认公众号 FakeID 是否有效且未被修改',
-        '请确认 API 地址和认证配置可用',
-      ];
+      return text.mpHints;
     }
 
-    return [
-      '请确认该源 API 地址可访问',
-      '请确认该源的认证参数和返回格式正确',
-    ];
+    return text.customHints;
   };
 
   const showFetchStatusModal = ({
@@ -133,28 +196,28 @@ export default function Sources() {
     showFetchStatusModal({
       status: 'loading',
       source,
-      message: `正在抓取 ${source.name}，请稍候...`,
+      message: text.fetchingSource.replace('{name}', source.name),
       details: [
-        `来源 ID: ${source.id}`,
-        `来源类型: ${source.source_type}`,
-        `触发时间: ${startedAt}`,
+        `${text.sourceId}: ${source.id}`,
+        `${text.sourceType}: ${source.source_type}`,
+        `${text.triggerTime}: ${startedAt}`,
       ],
     });
 
     try {
       const result = await sourcesApi.fetch(source.id);
       const details = [
-        `来源 ID: ${source.id}`,
-        `来源类型: ${source.source_type}`,
-        `触发时间: ${startedAt}`,
-        `新增文章: ${result.articles_added ?? 0}`,
+        `${text.sourceId}: ${source.id}`,
+        `${text.sourceType}: ${source.source_type}`,
+        `${text.triggerTime}: ${startedAt}`,
+        `${text.addedArticles}: ${result.articles_added ?? 0}`,
       ];
 
       if (result.success) {
         showFetchStatusModal({
           status: 'success',
           source,
-          message: result.message || '抓取完成',
+          message: result.message || text.fetchCompleted,
           details,
           articlesAdded: result.articles_added ?? 0,
         });
@@ -163,26 +226,26 @@ export default function Sources() {
         showFetchStatusModal({
           status: 'error',
           source,
-          message: result.message || '抓取失败',
+          message: result.message || text.fetchFailed,
           details: [...details, ...getSourceDebugHints(source)],
           articlesAdded: result.articles_added ?? 0,
         });
       }
     } catch (err) {
-      const rawMessage = err instanceof Error ? err.message : '未知错误';
+      const rawMessage = err instanceof Error ? err.message : text.unknownError;
       const errorType = rawMessage.startsWith('HTTP ')
-        ? '接口响应异常'
-        : '网络或运行时异常';
+        ? text.apiResponseException
+        : text.runtimeException;
 
       showFetchStatusModal({
         status: 'error',
         source,
-        message: `抓取失败：${rawMessage}`,
+        message: text.fetchFailedWithReason.replace('{reason}', rawMessage),
         details: [
-          `来源 ID: ${source.id}`,
-          `来源类型: ${source.source_type}`,
-          `触发时间: ${startedAt}`,
-          `异常类型: ${errorType}`,
+          `${text.sourceId}: ${source.id}`,
+          `${text.sourceType}: ${source.source_type}`,
+          `${text.triggerTime}: ${startedAt}`,
+          `${isZh ? '异常类型' : 'Error type'}: ${errorType}`,
           ...getSourceDebugHints(source),
         ],
       });
@@ -218,12 +281,12 @@ export default function Sources() {
     showFetchStatusModal({
       status: failCount > 0 ? 'error' : 'success',
       source: null,
-      message: failCount > 0 ? '批量抓取已完成（含失败项）' : '批量抓取已完成',
+      message: failCount > 0 ? text.batchCompletedWithFailures : text.batchCompleted,
       details: [
-        `处理来源: ${sources.length}`,
-        `成功: ${successCount}`,
-        `失败: ${failCount}`,
-        `新增文章: ${totalAdded}`,
+        `${text.processedSources}: ${sources.length}`,
+        `${text.success}: ${successCount}`,
+        `${text.failed}: ${failCount}`,
+        `${text.addedArticles}: ${totalAdded}`,
       ],
       articlesAdded: totalAdded,
     });
@@ -252,9 +315,9 @@ export default function Sources() {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <div className="w-1 h-6 bg-[#0d4656]"></div>
-            <span className="font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">Information Architecture</span>
+            <span className="font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">{text.informationArchitecture}</span>
           </div>
-          <h1 className="text-5xl md:text-6xl font-['Newsreader'] italic leading-tight text-[#1a1c1b]">Source Management</h1>
+          <h1 className="text-5xl md:text-6xl font-['Newsreader'] italic leading-tight text-[#1a1c1b]">{text.sourceManagement}</h1>
         </div>
         <div className="flex gap-3">
           <button
@@ -268,7 +331,7 @@ export default function Sources() {
             >
               sync
             </span>
-            {fetchingAll ? 'Crawling...' : 'Manual Crawl All'}
+            {fetchingAll ? text.crawling : text.manualCrawlAll}
           </button>
           <button
             onClick={() => {
@@ -278,7 +341,7 @@ export default function Sources() {
             className="flex items-center gap-2 bg-gradient-to-br from-[#0d4656] to-[#2c5e6e] px-6 py-2.5 rounded-lg text-sm font-semibold text-white shadow-lg hover:translate-y-[-1px] transition-all"
           >
             <span className="material-symbols-outlined text-base" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>add_link</span>
-            Add New Source
+            {text.addNewSource}
           </button>
         </div>
       </div>
@@ -286,28 +349,28 @@ export default function Sources() {
       {/* Bento Status Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="md:col-span-1 bg-[#f4f4f2] p-6 rounded-xl flex flex-col justify-between">
-          <span className="font-['Manrope'] uppercase tracking-widest text-[10px] text-[#5e5e5e]">Healthy Links</span>
+          <span className="font-['Manrope'] uppercase tracking-widest text-[10px] text-[#5e5e5e]">{text.healthyLinks}</span>
           <div className="flex items-baseline gap-2 mt-4">
             <span className="text-4xl font-['Newsreader'] italic">{healthyCount}</span>
             <span className="text-xs text-green-600 font-bold flex items-center gap-1">
               <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>arrow_upward</span>
-              Active
+              {text.active}
             </span>
           </div>
         </div>
         <div className="md:col-span-1 bg-[#f4f4f2] p-6 rounded-xl flex flex-col justify-between">
-          <span className="font-['Manrope'] uppercase tracking-widest text-[10px] text-[#5e5e5e]">Latency</span>
+          <span className="font-['Manrope'] uppercase tracking-widest text-[10px] text-[#5e5e5e]">{text.latency}</span>
           <div className="flex items-baseline gap-2 mt-4">
-            <span className="text-4xl font-['Newsreader'] italic">0.8s</span>
-            <span className="text-xs text-[#5e5e5e] font-medium">Avg Crawl</span>
+            <span className="text-4xl font-['Newsreader'] italic">{isZh ? '0.8秒' : '0.8s'}</span>
+            <span className="text-xs text-[#5e5e5e] font-medium">{text.avgCrawl}</span>
           </div>
         </div>
         <div className="md:col-span-2 bg-[#e2e3e1] p-6 rounded-xl flex flex-col justify-between relative overflow-hidden">
           <div className="relative z-10">
-            <span className="font-['Manrope'] uppercase tracking-widest text-[10px] text-[#0d4656]">Critical Issues</span>
+            <span className="font-['Manrope'] uppercase tracking-widest text-[10px] text-[#0d4656]">{text.criticalIssues}</span>
             <div className="flex items-baseline gap-2 mt-4">
               <span className="text-4xl font-['Newsreader'] italic text-[#ba1a1a]">{criticalCount}</span>
-              <span className="text-xs text-[#ba1a1a] font-medium">Action required</span>
+              <span className="text-xs text-[#ba1a1a] font-medium">{text.actionRequired}</span>
             </div>
           </div>
           <div className="absolute right-[-10%] bottom-[-20%] opacity-10">
@@ -327,15 +390,15 @@ export default function Sources() {
             <div className="w-24 h-24 bg-[#eeeeec] rounded-full flex items-center justify-center mb-6 mx-auto">
               <span className="material-symbols-outlined text-4xl text-[#c0c8cb]" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>cloud_off</span>
             </div>
-            <h2 className="text-3xl font-['Newsreader'] italic mb-2 text-[#1a1c1b]">No Active Signals</h2>
+            <h2 className="text-3xl font-['Newsreader'] italic mb-2 text-[#1a1c1b]">{text.noActiveSignals}</h2>
             <p className="max-w-md text-[#40484b] text-sm leading-relaxed mb-8 mx-auto">
-              Your atelier is currently quiet. Connect a source to begin the curation process and receive your first briefing.
+              {text.noActiveSignalsHint}
             </p>
             <button
               onClick={() => setShowModal(true)}
               className="bg-[#0d4656] text-white px-8 py-3 rounded-lg font-semibold shadow-xl hover:opacity-90 transition-opacity"
             >
-              Start Connection
+              {text.startConnection}
             </button>
           </div>
         ) : (
@@ -343,11 +406,11 @@ export default function Sources() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#e8e8e6]/50 border-b border-[#c0c8cb]/10">
-                  <th className="px-8 py-5 font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">Source Identity</th>
-                  <th className="px-6 py-5 font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">Type</th>
-                  <th className="px-6 py-5 font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">Last Indexed</th>
-                  <th className="px-6 py-5 font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">Status</th>
-                  <th className="px-8 py-5 text-right font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">Actions</th>
+                  <th className="px-8 py-5 font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">{text.sourceIdentity}</th>
+                  <th className="px-6 py-5 font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">{text.type}</th>
+                  <th className="px-6 py-5 font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">{text.lastIndexed}</th>
+                  <th className="px-6 py-5 font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">{text.status}</th>
+                  <th className="px-8 py-5 text-right font-['Manrope'] uppercase tracking-widest text-[11px] text-[#5e5e5e]">{text.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#c0c8cb]/10">
@@ -368,23 +431,23 @@ export default function Sources() {
                       </td>
                       <td className="px-6 py-6">
                         <span className="px-3 py-1 bg-[#e2e3e1] text-[#5e5e5e] text-[10px] font-bold uppercase tracking-widest rounded-full">
-                          {source.source_type === 'mptext' ? 'WeChat' : 'Custom'}
+                          {source.source_type === 'mptext' ? text.wechat : text.custom}
                         </span>
                       </td>
                       <td className="px-6 py-6 text-sm text-[#40484b]">
-                        {source.last_fetch_at ? dayjs(source.last_fetch_at).format('MM-DD HH:mm') : 'Never'}
+                        {source.last_fetch_at ? dayjs(source.last_fetch_at).format('MM-DD HH:mm') : text.never}
                       </td>
                       <td className="px-6 py-6">
                         <div className="flex items-center gap-2">
                           {isHealthy ? (
                             <>
                               <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]"></div>
-                              <span className="text-[11px] font-bold text-green-700 uppercase tracking-tight">Healthy</span>
+                              <span className="text-[11px] font-bold text-green-700 uppercase tracking-tight">{text.healthy}</span>
                             </>
                           ) : (
                             <>
                               <div className="w-2 h-2 rounded-full bg-[#ba1a1a] animate-pulse"></div>
-                              <span className="text-[11px] font-bold text-[#ba1a1a] uppercase tracking-tight">Needs Attention</span>
+                              <span className="text-[11px] font-bold text-[#ba1a1a] uppercase tracking-tight">{text.needsAttention}</span>
                             </>
                           )}
                         </div>
@@ -395,7 +458,7 @@ export default function Sources() {
                             onClick={() => handleFetch(source)}
                             disabled={fetchingId === source.id}
                             className="p-2 text-[#71787c] hover:text-[#0d4656] hover:bg-white rounded-lg transition-all disabled:opacity-50"
-                            title="Fetch Now"
+                            title={text.fetchNow}
                           >
                             <span
                               className={`material-symbols-outlined text-lg ${fetchingId === source.id ? 'animate-spin' : ''}`}
@@ -407,14 +470,14 @@ export default function Sources() {
                           <button
                             onClick={() => handleEdit(source)}
                             className="p-2 text-[#71787c] hover:text-[#0d4656] hover:bg-white rounded-lg transition-all"
-                            title="Edit Source"
+                            title={text.editSource}
                           >
                             <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>edit</span>
                           </button>
                           <button
                             onClick={() => handleDelete(source.id)}
                             className="p-2 text-[#71787c] hover:text-[#ba1a1a] hover:bg-white rounded-lg transition-all"
-                            title="Delete Source"
+                            title={text.deleteSource}
                           >
                             <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>delete</span>
                           </button>
@@ -432,9 +495,9 @@ export default function Sources() {
       {/* Quick Add Footer */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start border-t border-[#c0c8cb]/20 pt-12">
         <div className="md:col-span-1">
-          <h3 className="text-2xl font-['Newsreader'] italic mb-2 text-[#1a1c1b]">Ingest New Signal</h3>
+          <h3 className="text-2xl font-['Newsreader'] italic mb-2 text-[#1a1c1b]">{text.ingestSignal}</h3>
           <p className="text-sm text-[#40484b] leading-relaxed">
-            Add a new URL, RSS feed, or social profile to your digital atelier. Our crawlers will analyze the intellectual density before indexing.
+            {text.ingestHint}
           </p>
         </div>
         <div className="md:col-span-2">
@@ -447,7 +510,7 @@ export default function Sources() {
                 setQuickAddError('');
               }}
               onKeyDown={(e) => e.key === 'Enter' && handleQuickAdd()}
-              placeholder="粘贴微信公众号文章链接"
+              placeholder={text.quickAddPlaceholder}
               className="flex-1 bg-transparent border-none focus:ring-0 px-4 py-3 text-sm placeholder:text-[#71787c]/50 text-[#1a1c1b]"
             />
             <div className="flex items-center gap-1">
@@ -456,7 +519,7 @@ export default function Sources() {
                 disabled={quickAddLoading}
                 className="bg-[#0d4656] text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
               >
-                {quickAddLoading ? '解析中...' : '添加'}
+                {quickAddLoading ? text.parsing : text.add}
               </button>
             </div>
           </div>
@@ -464,7 +527,7 @@ export default function Sources() {
             <p className="mt-2 text-sm text-red-600">{quickAddError}</p>
           )}
           <div className="mt-4 flex flex-wrap gap-2">
-            <span className="text-[10px] text-[#71787c] font-['Manrope'] uppercase tracking-wider self-center mr-2">Suggestions:</span>
+            <span className="text-[10px] text-[#71787c] font-['Manrope'] uppercase tracking-wider self-center mr-2">{text.suggestions}:</span>
             <button className="px-3 py-1 bg-[#f4f4f2] border border-[#c0c8cb]/10 rounded-full text-[10px] text-[#5e5e5e] hover:bg-[#e8e8e6] transition-colors">Aeon Magazine</button>
             <button className="px-3 py-1 bg-[#f4f4f2] border border-[#c0c8cb]/10 rounded-full text-[10px] text-[#5e5e5e] hover:bg-[#e8e8e6] transition-colors">The Browser</button>
             <button className="px-3 py-1 bg-[#f4f4f2] border border-[#c0c8cb]/10 rounded-full text-[10px] text-[#5e5e5e] hover:bg-[#e8e8e6] transition-colors">Ribbonfarm</button>
@@ -519,6 +582,8 @@ interface SourceModalProps {
 }
 
 function SourceModal({ source, onClose, onSave }: SourceModalProps) {
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
   const [name, setName] = useState(source?.name || '');
   const [sourceType, setSourceType] = useState(source?.source_type || 'mptext');
   const [apiBaseUrl, setApiBaseUrl] = useState(source?.api_base_url || 'https://down.mptext.top');
@@ -544,7 +609,7 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
       }
       onSave();
     } catch (err) {
-      alert(source ? '更新失败' : '创建失败');
+      alert(source ? (isZh ? '更新失败' : 'Update failed') : (isZh ? '创建失败' : 'Create failed'));
     } finally {
       setSaving(false);
     }
@@ -555,7 +620,7 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <h3 className="text-lg font-semibold text-gray-900">
-            {source ? '编辑新闻源' : '添加新闻源'}
+            {source ? (isZh ? '编辑新闻源' : 'Edit Source') : (isZh ? '添加新闻源' : 'Add Source')}
           </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -565,29 +630,29 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">名称</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isZh ? '名称' : 'Name'}</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="例如：科技资讯"
+              placeholder={isZh ? '例如：科技资讯' : 'e.g. Tech Insights'}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d4656]"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">类型</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isZh ? '类型' : 'Type'}</label>
             <select
               value={sourceType}
               onChange={(e) => setSourceType(e.target.value)}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d4656]"
             >
-              <option value="mptext">微信公众号 (MPText)</option>
-              <option value="custom">自定义 REST API</option>
+              <option value="mptext">{isZh ? '微信公众号 (MPText)' : 'WeChat (MPText)'}</option>
+              <option value="custom">{isZh ? '自定义 REST API' : 'Custom REST API'}</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">API 基础 URL</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isZh ? 'API 基础 URL' : 'API Base URL'}</label>
             <input
               type="url"
               value={apiBaseUrl}
@@ -597,24 +662,24 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">认证 Key</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{isZh ? '认证 Key' : 'Auth Key'}</label>
             <input
               type="password"
               value={authKey}
               onChange={(e) => setAuthKey(e.target.value)}
-              placeholder="MPText API Key（可选）"
+              placeholder={isZh ? 'MPText API Key（可选）' : 'MPText API Key (optional)'}
               className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d4656]"
             />
           </div>
           {sourceType === 'mptext' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">微信公众号 Fake ID</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{isZh ? '微信公众号 Fake ID' : 'WeChat Fake ID'}</label>
               <input
                 type="text"
                 value={fakeid}
                 onChange={(e) => setFakeid(e.target.value)}
                 required
-                placeholder="在 MPText 平台获取的 fakeid"
+                placeholder={isZh ? '在 MPText 平台获取的 fakeid' : 'fakeid from MPText platform'}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d4656]"
               />
             </div>
@@ -625,14 +690,14 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              取消
+              {isZh ? '取消' : 'Cancel'}
             </button>
             <button
               type="submit"
               disabled={saving}
               className="px-4 py-2 text-sm font-medium text-white bg-[#0d4656] rounded-lg hover:bg-[#2c5e6e] disabled:opacity-50 transition-colors"
             >
-              {saving ? '保存中...' : '保存'}
+              {saving ? (isZh ? '保存中...' : 'Saving...') : (isZh ? '保存' : 'Save')}
             </button>
           </div>
         </form>
@@ -648,6 +713,8 @@ interface AddFromUrlModalProps {
 }
 
 function AddFromUrlModal({ onClose, onSuccess, initialAccount }: AddFromUrlModalProps) {
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
   const [url, setUrl] = useState('');
   const [parsing, setParsing] = useState(false);
   const [parsedAccount, setParsedAccount] = useState<ParsedAccount | null>(initialAccount || null);
@@ -656,12 +723,12 @@ function AddFromUrlModal({ onClose, onSuccess, initialAccount }: AddFromUrlModal
 
   const handleParse = async () => {
     if (!url.trim()) {
-      setError('请输入文章链接');
+      setError(isZh ? '请输入文章链接' : 'Please enter an article URL');
       return;
     }
 
     if (!url.includes('mp.weixin.qq.com')) {
-      setError('请输入有效的微信公众号文章链接');
+      setError(isZh ? '请输入有效的微信公众号文章链接' : 'Please enter a valid WeChat article URL');
       return;
     }
 
@@ -673,7 +740,7 @@ function AddFromUrlModal({ onClose, onSuccess, initialAccount }: AddFromUrlModal
       const account = await sourcesApi.parseUrl(url);
       setParsedAccount(account);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '解析失败');
+      setError(err instanceof Error ? err.message : (isZh ? '解析失败' : 'Parse failed'));
     } finally {
       setParsing(false);
     }
@@ -693,7 +760,7 @@ function AddFromUrlModal({ onClose, onSuccess, initialAccount }: AddFromUrlModal
       });
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : '添加失败');
+      setError(err instanceof Error ? err.message : (isZh ? '添加失败' : 'Add failed'));
     } finally {
       setSaving(false);
     }
@@ -703,7 +770,7 @@ function AddFromUrlModal({ onClose, onSuccess, initialAccount }: AddFromUrlModal
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4">
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h3 className="text-lg font-semibold text-gray-900">从文章链接添加公众号</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{isZh ? '从文章链接添加公众号' : 'Add account from article URL'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -714,7 +781,7 @@ function AddFromUrlModal({ onClose, onSuccess, initialAccount }: AddFromUrlModal
         <div className="p-4 space-y-4">
           {!initialAccount && !parsedAccount && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">微信公众号文章链接</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{isZh ? '微信公众号文章链接' : 'WeChat article URL'}</label>
               <div className="flex gap-2">
                 <input
                   type="url"
@@ -724,7 +791,7 @@ function AddFromUrlModal({ onClose, onSuccess, initialAccount }: AddFromUrlModal
                     setError('');
                     setParsedAccount(null);
                   }}
-                  placeholder="https://mp.weixin.qq.com/s/..."
+                  placeholder={isZh ? 'https://mp.weixin.qq.com/s/...' : 'https://mp.weixin.qq.com/s/...'}
                   className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#0d4656]"
                 />
                 <button
@@ -732,10 +799,10 @@ function AddFromUrlModal({ onClose, onSuccess, initialAccount }: AddFromUrlModal
                   disabled={parsing || !url.trim()}
                   className="px-4 py-2 bg-[#0d4656] text-white rounded-lg text-sm font-medium hover:bg-[#2c5e6e] disabled:opacity-50 transition-colors"
                 >
-                  {parsing ? '解析中...' : '解析'}
+                  {parsing ? (isZh ? '解析中...' : 'Parsing...') : (isZh ? '解析' : 'Parse')}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-gray-500">粘贴任意微信公众号文章的链接，系统将自动识别所属公众号</p>
+              <p className="mt-1 text-xs text-gray-500">{isZh ? '粘贴任意微信公众号文章链接，系统将自动识别所属公众号' : 'Paste any WeChat article URL and the system will identify the account automatically.'}</p>
             </div>
           )}
 
@@ -764,19 +831,19 @@ function AddFromUrlModal({ onClose, onSuccess, initialAccount }: AddFromUrlModal
                   <div>
                     <h4 className="font-semibold text-gray-900">{account.nickname}</h4>
                     {account.is_verify === 2 && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                        已认证
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                        {isZh ? '已认证' : 'Verified'}
                       </span>
                     )}
                   </div>
                 </div>
 
                 {account.alias && (
-                  <p className="text-sm text-gray-500 mb-2">微信号：{account.alias}</p>
+                  <p className="text-sm text-gray-500 mb-2">{isZh ? '微信号' : 'WeChat ID'}：{account.alias}</p>
                 )}
 
                 {account.verify_info && (
-                  <p className="text-sm text-gray-500 mb-2">主体：{account.verify_info}</p>
+                  <p className="text-sm text-gray-500 mb-2">{isZh ? '主体' : 'Entity'}：{account.verify_info}</p>
                 )}
 
                 {account.signature && (
@@ -796,14 +863,14 @@ function AddFromUrlModal({ onClose, onSuccess, initialAccount }: AddFromUrlModal
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            取消
+            {isZh ? '取消' : 'Cancel'}
           </button>
           <button
             onClick={handleConfirm}
             disabled={!parsedAccount || saving}
             className="px-4 py-2 text-sm font-medium text-white bg-[#0d4656] rounded-lg hover:bg-[#2c5e6e] disabled:opacity-50 transition-colors"
           >
-            {saving ? '添加中...' : '确认添加'}
+            {saving ? (isZh ? '添加中...' : 'Adding...') : (isZh ? '确认添加' : 'Confirm Add')}
           </button>
         </div>
       </div>
@@ -832,9 +899,11 @@ function FetchFeedbackModal({
   onClose,
   onRetry,
 }: FetchFeedbackModalProps) {
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
   if (!open) return null;
 
-  const statusLabel = status === 'loading' ? 'Running' : status === 'success' ? 'Completed' : 'Failed';
+  const statusLabel = status === 'loading' ? (isZh ? '进行中' : 'Running') : status === 'success' ? (isZh ? '已完成' : 'Completed') : (isZh ? '失败' : 'Failed');
   const statusClassName =
     status === 'loading'
       ? 'bg-[#e8f1f3] text-[#0d4656]'
@@ -850,20 +919,20 @@ function FetchFeedbackModal({
             <div className="mb-2 flex items-center gap-2">
               <div className="h-5 w-1 rounded-full bg-[#0d4656]" />
               <p className="font-['Manrope'] text-[11px] uppercase tracking-widest text-[#5e5e5e]">
-                Fetch Status
+                {isZh ? '抓取状态' : 'Fetch Status'}
               </p>
               <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusClassName}`}>
                 {statusLabel}
               </span>
             </div>
             <h3 className="font-['Newsreader'] text-3xl italic leading-tight text-[#1a1c1b]">
-              {source ? source.name : 'Manual Crawl All'}
+              {source ? source.name : (isZh ? '手动抓取全部' : 'Manual Crawl All')}
             </h3>
           </div>
           <button
             onClick={onClose}
             className="rounded-lg p-2 text-[#71787c] transition-colors hover:bg-white hover:text-[#1a1c1b]"
-            aria-label="关闭"
+            aria-label={isZh ? '关闭' : 'Close'}
           >
             <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24" }}>
               close
@@ -888,14 +957,14 @@ function FetchFeedbackModal({
             <div className="min-w-0">
               <p className="text-sm font-semibold text-[#1a1c1b]">{message}</p>
               {status !== 'loading' && (
-                <p className="mt-1 text-xs text-[#5e5e5e]">本次新增文章：{articlesAdded}</p>
+                <p className="mt-1 text-xs text-[#5e5e5e]">{isZh ? '本次新增文章' : 'Articles added'}：{articlesAdded}</p>
               )}
             </div>
           </div>
 
           {details.length > 0 && (
             <div className="rounded-xl border border-[#c0c8cb]/20 bg-[#fdfdfc] px-4 py-3">
-              <p className="mb-2 font-['Manrope'] text-[10px] uppercase tracking-widest text-[#5e5e5e]">Details</p>
+              <p className="mb-2 font-['Manrope'] text-[10px] uppercase tracking-widest text-[#5e5e5e]">{isZh ? '详情' : 'Details'}</p>
               <ul className="space-y-1.5 text-sm text-[#40484b]">
                 {details.map((detail) => (
                   <li key={detail} className="flex items-start gap-2">
@@ -914,14 +983,14 @@ function FetchFeedbackModal({
               onClick={onRetry}
               className="rounded-lg border border-[#c0c8cb]/30 px-4 py-2 text-sm font-semibold text-[#1a1c1b] transition-colors hover:bg-white"
             >
-              Retry
+              {isZh ? '重试' : 'Retry'}
             </button>
           )}
           <button
             onClick={onClose}
             className="rounded-lg bg-[#0d4656] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#2c5e6e]"
           >
-            {status === 'loading' ? 'Background Run' : 'Close'}
+            {status === 'loading' ? (isZh ? '后台运行' : 'Background Run') : (isZh ? '关闭' : 'Close')}
           </button>
         </div>
       </div>

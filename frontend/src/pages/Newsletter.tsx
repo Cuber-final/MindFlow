@@ -9,6 +9,7 @@ import {
   type InsightRef,
   type UserInterestTag,
 } from '../api/newsletter';
+import { useI18n } from '../i18n';
 
 function getWeekStart(value: string) {
   const date = dayjs(value);
@@ -38,13 +39,15 @@ function InterestSidebar({
   selectedTag?: string;
   onTagSelect: (tag?: string) => void;
 }) {
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
   return (
     <aside className="w-56 shrink-0">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-label text-sm font-semibold text-[#5e5e5e] uppercase tracking-widest">兴趣标签</h3>
+        <h3 className="font-label text-sm font-semibold text-[#5e5e5e] uppercase tracking-widest">{isZh ? '兴趣标签' : 'Interest Tags'}</h3>
         {selectedTag && (
           <button className="text-xs text-[#0d4656] hover:underline" onClick={() => onTagSelect(undefined)}>
-            清除
+            {isZh ? '清除' : 'Clear'}
           </button>
         )}
       </div>
@@ -117,6 +120,8 @@ function WeekDatePanel({
   onPrevWeek: () => void;
   onNextWeek: () => void;
 }) {
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
   const [open, setOpen] = useState(false);
   const weekDays = useMemo(() => getWeekDays(weekStart), [weekStart]);
   const weekLabel = `${dayjs(weekStart).format('MMM D')} - ${dayjs(getWeekEnd(weekStart)).format('MMM D')}`;
@@ -140,25 +145,25 @@ function WeekDatePanel({
               <button
                 onClick={onPrevWeek}
                 className="rounded-full p-2 text-[#40484b] hover:bg-[#f4f4f2]"
-                aria-label="上一周"
+                aria-label={isZh ? '上一周' : 'Previous week'}
               >
                 <span className="material-symbols-outlined">chevron_left</span>
               </button>
               <div className="text-center">
-                <p className="text-[11px] uppercase tracking-widest text-[#5e5e5e]">Week</p>
+                <p className="text-[11px] uppercase tracking-widest text-[#5e5e5e]">{isZh ? '周视图' : 'Week'}</p>
                 <p className="font-semibold text-[#1a1c1b]">{weekLabel}</p>
               </div>
               <button
                 onClick={onNextWeek}
                 disabled={!canGoNext}
                 className="rounded-full p-2 text-[#40484b] hover:bg-[#f4f4f2] disabled:opacity-30 disabled:hover:bg-transparent"
-                aria-label="下一周"
+                aria-label={isZh ? '下一周' : 'Next week'}
               >
                 <span className="material-symbols-outlined">chevron_right</span>
               </button>
             </div>
 
-            {loading && <p className="mb-3 text-xs text-[#5e5e5e]">正在加载本周简报...</p>}
+            {loading && <p className="mb-3 text-xs text-[#5e5e5e]">{isZh ? '正在加载本周简报...' : 'Loading this week’s digests...'}</p>}
 
             <div className="grid grid-cols-7 gap-2">
               {weekDays.map((day) => {
@@ -212,6 +217,8 @@ function MainChannelArticle({
   onFeedback: (insight: InsightRef) => void;
   onOpenDetail: (insight: InsightRef) => void;
 }) {
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -237,22 +244,22 @@ function MainChannelArticle({
               <summary className="flex cursor-pointer list-none items-center justify-between">
                 <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#0d4656]">
                   <span className="material-symbols-outlined text-sm">psychology</span>
-                  Dialectical Analysis
+                  {isZh ? '辩证分析' : 'Dialectical Analysis'}
                 </span>
                 <span className="material-symbols-outlined transition-transform group-open/dialectical:rotate-180">expand_more</span>
               </summary>
               <div className="mt-6 grid grid-cols-1 gap-8 text-sm md:grid-cols-3">
                 <div>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#0d4656]">Thesis (Pros)</p>
-                  <p className="text-[#40484b]">{insight.dialectical_analysis || 'Insightful analysis pending.'}</p>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#0d4656]">{isZh ? '正题（利）' : 'Thesis (Pros)'}</p>
+                  <p className="text-[#40484b]">{insight.dialectical_analysis || (isZh ? '分析内容待补充。' : 'Insightful analysis pending.')}</p>
                 </div>
                 <div>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#ba1a1a]">Antithesis (Cons)</p>
-                  <p className="text-[#40484b]">Considerations and counterpoints to explore further.</p>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#ba1a1a]">{isZh ? '反题（弊）' : 'Antithesis (Cons)'}</p>
+                  <p className="text-[#40484b]">{isZh ? '可进一步验证的限制与反向观点。' : 'Considerations and counterpoints to explore further.'}</p>
                 </div>
                 <div>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#784f28]">Synthesis (Extensions)</p>
-                  <p className="text-[#40484b]">Broader implications and interconnected possibilities.</p>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#784f28]">{isZh ? '综合（延展）' : 'Synthesis (Extensions)'}</p>
+                  <p className="text-[#40484b]">{isZh ? '更大范围影响与潜在联动机会。' : 'Broader implications and interconnected possibilities.'}</p>
                 </div>
               </div>
             </details>
@@ -269,7 +276,7 @@ function MainChannelArticle({
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0d4656] px-4 py-3 text-[11px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-[#0b3f4d]"
             >
               <span className="material-symbols-outlined text-base">arrow_forward</span>
-              Open Detail
+              {isZh ? '打开详情' : 'Open Detail'}
             </button>
             <button
               onClick={() => onFeedback(insight)}
@@ -277,10 +284,10 @@ function MainChannelArticle({
               className="inline-flex items-center justify-center gap-2 rounded-full border border-[#c0c8cb]/20 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-[#40484b] transition-colors hover:border-[#0d4656]/30 hover:text-[#0d4656] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-base">thumb_down</span>
-              减少这类话题内容
+              {isZh ? '减少这类话题内容' : 'Show less of this topic'}
             </button>
             <p className="text-[10px] uppercase tracking-[0.22em] text-[#5e5e5e]">
-              Read Source continues inside the detail view
+              {isZh ? '阅读原文入口在详情页中继续' : 'Read Source continues inside the detail view'}
             </p>
           </div>
         </div>
@@ -300,6 +307,13 @@ function ExplorationCard({
   content: string;
   meta: string;
 }) {
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
+  const categoryLabel = {
+    'Emerging Match': isZh ? '新匹配' : 'Emerging Match',
+    Tangent: isZh ? '延展' : 'Tangent',
+    Speculative: isZh ? '假设' : 'Speculative',
+  };
   const categoryStyles = {
     'Emerging Match': 'bg-[#ffdcc0] text-[#784f28]',
     Tangent: 'bg-[#f3bb8b] text-[#5d3813]',
@@ -309,7 +323,7 @@ function ExplorationCard({
   return (
     <div className="rounded border border-[#c0c8cb]/10 bg-[#f4f4f2] p-6 transition-transform hover:-translate-y-1">
       <span className={`mb-4 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest ${categoryStyles[category]}`}>
-        {category}
+        {categoryLabel[category]}
       </span>
       <h5 className="mb-3 font-headline text-xl">{title}</h5>
       <p className="mb-6 line-clamp-3 text-sm text-[#40484b]">{content}</p>
@@ -322,10 +336,14 @@ function ExplorationCard({
 }
 
 function SurpriseItem({ number, title }: { number: number; title: string }) {
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
   return (
     <div className="cursor-pointer rounded border border-white/10 bg-white/5 p-6 backdrop-blur-md transition-colors hover:bg-white/10">
       <h6 className="mb-2 font-headline text-lg">{title}</h6>
-      <p className="mb-4 text-xs uppercase tracking-widest opacity-70">Serendipity #{String(number).padStart(2, '0')}</p>
+      <p className="mb-4 text-xs uppercase tracking-widest opacity-70">
+        {isZh ? `意外发现 #${String(number).padStart(2, '0')}` : `Serendipity #${String(number).padStart(2, '0')}`}
+      </p>
       <span className="material-symbols-outlined">arrow_forward</span>
     </div>
   );
@@ -340,12 +358,14 @@ function Snackbar({
   variant: 'info' | 'error';
   onUndo?: () => void;
 }) {
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
   return (
     <div className="fixed bottom-6 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 rounded-full bg-[#1a1c1b] px-5 py-3 text-sm text-white shadow-xl">
       <span className={variant === 'error' ? 'text-[#ffb4ab]' : 'text-white'}>{message}</span>
       {onUndo && (
         <button className="text-xs font-bold uppercase tracking-widest text-[#9bd1df] hover:text-white" onClick={onUndo}>
-          Undo
+          {isZh ? '撤销' : 'Undo'}
         </button>
       )}
     </div>
@@ -354,6 +374,41 @@ function Snackbar({
 
 export default function Newsletter() {
   const navigate = useNavigate();
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
+  const text = {
+    operationFailedRestored: isZh ? '操作失败，已恢复当前内容' : 'Action failed, content restored.',
+    adjustmentUndone: isZh ? '已撤销本次调整' : 'Adjustment undone.',
+    reducedSimilar: isZh ? '已减少类似内容' : 'Reduced similar content.',
+    digestTitle: isZh ? '每日简报' : 'Daily Digest',
+    digestFallbackOverview: isZh
+      ? '你的私人信息工作台已将最新信源提炼为今日核心信号。'
+      : 'Your private information atelier has distilled the latest sources into today’s core signals.',
+    articlesProcessed: isZh ? '篇文章已处理' : 'articles processed',
+    anchors: isZh ? '个锚点' : 'anchors',
+    noDigestToday: isZh ? '今日暂无简报' : 'No digest for today',
+    noDigestSelected: isZh ? '所选日期暂无简报' : 'No digest for selected date',
+    noDigestTodayHint: isZh
+      ? '今天的日报还没有生成。你可以稍后再来查看，或者先阅读最近一次已生成的简报。'
+      : 'Today’s digest has not been generated yet. Please check back later or open the latest available digest.',
+    noDigestDateHint: isZh
+      ? '这个日期目前没有可展示的日报，请从周面板里选择其他高亮日期。'
+      : 'No digest is available for this date. Please choose another highlighted date from the week panel.',
+    latestDigest: isZh ? '查看最近一份简报' : 'View latest digest',
+    mainChannel: isZh ? '主频道' : 'Main Channel',
+    coreInsight: isZh ? '核心洞察' : 'Core Insight',
+    societalShift: isZh ? '社会迁移' : 'Societal Shift',
+    minRead: isZh ? '分钟阅读' : 'min read',
+    explorationZone: isZh ? '探索区' : 'Exploration Zone',
+    viewAllMatches: isZh ? '查看全部匹配' : 'View All Matches',
+    surpriseBox: isZh ? '惊喜盒子' : 'Surprise Box',
+    randomFromUnmatched: isZh ? '随机选自未匹配兴趣' : 'Randomly selected from non-matched interests',
+    surpriseTitle1: isZh ? 'AI 时代的 Ikigai' : 'Ikigai in the Age of AI',
+    surpriseTitle2: isZh ? '粗野主义的美学' : 'The Aesthetics of Brutalism',
+    surpriseTitle3: isZh ? '分形中的音乐理论' : 'Music Theory in Fractals',
+    surpriseTitle4: isZh ? '古代发酵仪式' : 'Ancient Fermentation Rituals',
+    readMeta: isZh ? '分钟阅读' : 'm read',
+  };
   const today = useMemo(() => dayjs().format('YYYY-MM-DD'), []);
   const currentWeekStart = useMemo(() => getWeekStart(today), [today]);
 
@@ -491,7 +546,7 @@ export default function Newsletter() {
       })
       .catch(() => {
         setHiddenAnchorIds((prev) => prev.filter((id) => id !== target.insight.anchor_id));
-        showTimedSnackbar('操作失败，已恢复当前内容', 'error', 4000);
+        showTimedSnackbar(text.operationFailedRestored, 'error', 4000);
       });
   }
 
@@ -504,7 +559,7 @@ export default function Newsletter() {
     setHiddenAnchorIds((prev) => prev.filter((id) => id !== pendingFeedback.insight.anchor_id));
     setDismissingAnchorId(null);
     setPendingFeedback(null);
-    showTimedSnackbar('已撤销本次调整', 'info');
+    showTimedSnackbar(text.adjustmentUndone, 'info');
   }
 
   function handleNegativeFeedback(insight: InsightRef) {
@@ -519,7 +574,7 @@ export default function Newsletter() {
     animationTimerRef.current = window.setTimeout(() => {
       setHiddenAnchorIds((prev) => [...prev, insight.anchor_id]);
       setDismissingAnchorId(null);
-      setSnackbar({ message: '已减少类似内容', variant: 'info', undo: true });
+      setSnackbar({ message: text.reducedSimilar, variant: 'info', undo: true });
       commitTimerRef.current = window.setTimeout(() => commitFeedback({ digestId: digest.id, insight }), 6000);
     }, 220);
   }
@@ -598,17 +653,17 @@ export default function Newsletter() {
             <div>
               <p className="mb-4 font-label text-xs uppercase tracking-[0.2em] text-[#5e5e5e]">{formattedDate}</p>
               <h2 className="mb-6 font-headline text-6xl leading-none tracking-tight md:text-8xl">
-                Daily <br />
-                <span className="italic text-[#0d4656]">Digest</span>
+                {isZh ? '每日' : 'Daily'} <br />
+                <span className="italic text-[#0d4656]">{isZh ? '简报' : 'Digest'}</span>
               </h2>
               <p className="max-w-xl text-lg leading-relaxed text-[#40484b]">
-                {digest?.overview || 'Your private information atelier has distilled the latest sources into today’s core signals.'}
+                {digest?.overview || text.digestFallbackOverview}
               </p>
               {digest && (
                 <div className="mt-4 flex items-center gap-4 text-xs text-[#5e5e5e]">
-                  <span>{digest.total_articles_processed} articles processed</span>
+                  <span>{digest.total_articles_processed} {text.articlesProcessed}</span>
                   <span>·</span>
-                  <span>{digest.anchor_count} anchors</span>
+                  <span>{digest.anchor_count} {text.anchors}</span>
                 </div>
               )}
             </div>
@@ -634,12 +689,12 @@ export default function Newsletter() {
         ) : noDigestSelected ? (
           <section className="rounded-xl border border-[#c0c8cb]/20 bg-white p-10 text-center">
             <h3 className="mb-3 font-headline text-3xl text-[#1a1c1b]">
-              {isTodaySelected ? '今日暂无简报' : '所选日期暂无简报'}
+              {isTodaySelected ? text.noDigestToday : text.noDigestSelected}
             </h3>
             <p className="mx-auto max-w-xl text-sm leading-6 text-[#5e5e5e]">
               {isTodaySelected
-                ? '今天的日报还没有生成。你可以稍后再来查看，或者先阅读最近一次已生成的简报。'
-                : '这个日期目前没有可展示的日报，请从周面板里选择其他高亮日期。'}
+                ? text.noDigestTodayHint
+                : text.noDigestDateHint}
             </p>
             {isTodaySelected && latestDigestDate && latestDigestDate !== selectedDate && (
               <button
@@ -649,7 +704,7 @@ export default function Newsletter() {
                   setSelectedDate(latestDigestDate);
                 }}
               >
-                查看最近一份简报（{dayjs(latestDigestDate).format('MM/DD')}）
+                {text.latestDigest}（{dayjs(latestDigestDate).format('MM/DD')}）
               </button>
             )}
           </section>
@@ -659,15 +714,15 @@ export default function Newsletter() {
               <section className="mb-24">
                 <div className="mb-12 flex items-center gap-4">
                   <div className="h-8 w-1 bg-[#0d4656]" />
-                  <h3 className="font-headline text-3xl italic">Main Channel</h3>
+                  <h3 className="font-headline text-3xl italic">{text.mainChannel}</h3>
                 </div>
                 <div className="grid grid-cols-1 gap-12">
                   {mainInsights.map((insight, index) => (
                     <MainChannelArticle
                       key={insight.anchor_id}
                       insight={insight}
-                      badge={index === 0 ? 'Core Insight' : 'Societal Shift'}
-                      readTime={`${8 + index * 4} min read`}
+                      badge={index === 0 ? text.coreInsight : text.societalShift}
+                      readTime={`${8 + index * 4} ${text.minRead}`}
                       dismissing={dismissingAnchorId === insight.anchor_id}
                       feedbackDisabled={Boolean(pendingFeedback) || dismissingAnchorId !== null}
                       onFeedback={handleNegativeFeedback}
@@ -683,10 +738,10 @@ export default function Newsletter() {
                 <div className="mb-12 flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <span className="material-symbols-outlined text-[#5e5e5e]">explore</span>
-                    <h3 className="font-headline text-3xl italic">Exploration Zone</h3>
+                    <h3 className="font-headline text-3xl italic">{text.explorationZone}</h3>
                   </div>
                   <button className="border-b border-[#5e5e5e]/20 pb-1 text-[10px] font-bold uppercase tracking-widest text-[#5e5e5e] transition-colors hover:text-[#0d4656]">
-                    View All Matches
+                    {text.viewAllMatches}
                   </button>
                 </div>
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -697,7 +752,7 @@ export default function Newsletter() {
                         category={['Emerging Match', 'Tangent', 'Speculative'][(sectionIndex * 2 + insightIndex) % 3] as 'Emerging Match' | 'Tangent' | 'Speculative'}
                         title={insight.title}
                         content={insight.content}
-                        meta={`${section.domain} · ${5 + insightIndex * 2}m read`}
+                        meta={`${section.domain} · ${5 + insightIndex * 2}${text.readMeta}`}
                       />
                     ))
                   )}
@@ -711,17 +766,17 @@ export default function Newsletter() {
                 <div className="relative z-10">
                   <div className="mb-8 flex items-center gap-4">
                     <span className="material-symbols-outlined text-[#fcc493]">auto_fix_high</span>
-                    <h3 className="font-headline text-3xl italic">Surprise Box</h3>
+                    <h3 className="font-headline text-3xl italic">{text.surpriseBox}</h3>
                   </div>
                   <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-                    <SurpriseItem number={1} title="Ikigai in the Age of AI" />
-                    <SurpriseItem number={2} title="The Aesthetics of Brutalism" />
-                    <SurpriseItem number={3} title="Music Theory in Fractals" />
-                    <SurpriseItem number={4} title="Ancient Fermentation Rituals" />
+                    <SurpriseItem number={1} title={text.surpriseTitle1} />
+                    <SurpriseItem number={2} title={text.surpriseTitle2} />
+                    <SurpriseItem number={3} title={text.surpriseTitle3} />
+                    <SurpriseItem number={4} title={text.surpriseTitle4} />
                   </div>
                   <div className="mt-12 text-center">
                     <p className="font-label text-[10px] uppercase tracking-[0.3em] opacity-60">
-                      Randomly selected from non-matched interests
+                      {text.randomFromUnmatched}
                     </p>
                   </div>
                 </div>

@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import type { NowItem } from '../../api/newsletter';
+import { useI18n } from '../../i18n';
 
 interface NowQueueListProps {
   items: NowItem[];
@@ -11,8 +12,8 @@ interface NowQueueListProps {
   onSelectAnchor: (anchorId: number) => void;
 }
 
-function formatPublishedAt(value?: string | null) {
-  if (!value) return 'No date';
+function formatPublishedAt(value: string | null | undefined, noDateLabel: string) {
+  if (!value) return noDateLabel;
   return dayjs(value).format('MMM D · HH:mm');
 }
 
@@ -25,6 +26,14 @@ export default function NowQueueList({
   onToggleCollapsed,
   onSelectAnchor,
 }: NowQueueListProps) {
+  const { t } = useI18n();
+  const zoneLabel = (zone: string) => {
+    if (zone === 'main') return t('now.zones.main');
+    if (zone === 'explore') return t('now.zones.explore');
+    if (zone === 'discover' || zone === 'surprise') return t('now.zones.discover');
+    return zone;
+  };
+
   if (collapsed) {
     return (
       <div className="rounded-[28px] border border-[#c0c8cb]/15 bg-white p-4 shadow-[0_16px_40px_rgba(26,28,27,0.03)] xl:sticky xl:top-28 xl:self-start">
@@ -34,7 +43,7 @@ export default function NowQueueList({
           className="flex w-full items-center justify-between rounded-2xl bg-[#f4f4f2] px-4 py-5 text-left text-sm text-[#40484b] transition-colors hover:bg-[#ecebe7]"
         >
           <div>
-            <p className="text-[10px] uppercase tracking-[0.24em] text-[#5e5e5e]">Queue</p>
+            <p className="text-[10px] uppercase tracking-[0.24em] text-[#5e5e5e]">{t('now.queue.title')}</p>
             <p className="mt-2 text-2xl font-semibold text-[#1a1c1b]">{items.length}</p>
           </div>
           <span className="material-symbols-outlined text-[#0d4656]">right_panel_open</span>
@@ -47,14 +56,14 @@ export default function NowQueueList({
     <section className="rounded-[28px] border border-[#c0c8cb]/15 bg-white shadow-[0_16px_40px_rgba(26,28,27,0.03)] xl:sticky xl:top-28 xl:self-start">
       <div className="flex items-center justify-between border-b border-[#c0c8cb]/12 px-5 py-5">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.24em] text-[#5e5e5e]">Queue</p>
-          <h3 className="mt-2 font-headline text-2xl text-[#1a1c1b]">Priority stack</h3>
+          <p className="text-[10px] uppercase tracking-[0.24em] text-[#5e5e5e]">{t('now.queue.title')}</p>
+          <h3 className="mt-2 font-headline text-2xl text-[#1a1c1b]">{t('now.queue.priorityStack')}</h3>
         </div>
         <button
           type="button"
           onClick={onToggleCollapsed}
           className="rounded-full border border-[#c0c8cb]/15 p-2 text-[#40484b] transition-colors hover:border-[#0d4656]/20 hover:text-[#0d4656]"
-          aria-label="Collapse queue"
+          aria-label={t('now.actions.collapseQueue')}
         >
           <span className="material-symbols-outlined">left_panel_close</span>
         </button>
@@ -71,7 +80,7 @@ export default function NowQueueList({
           ))
         ) : items.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#c0c8cb]/20 px-4 py-8 text-center text-sm leading-7 text-[#5e5e5e]">
-            No active items remain in the queue.
+            {t('now.queue.empty')}
           </div>
         ) : (
           items.map((item, index) => {
@@ -95,11 +104,11 @@ export default function NowQueueList({
                   <div className="flex items-center gap-2">
                     {item.is_read && (
                       <span className={`rounded-full px-2 py-1 text-[10px] uppercase tracking-widest ${isActive ? 'bg-white/12 text-white' : 'bg-[#dce8eb] text-[#0d4656]'}`}>
-                        Read
+                        {t('now.labels.read')}
                       </span>
                     )}
                     <span className={`rounded-full px-2 py-1 text-[10px] uppercase tracking-widest ${isActive ? 'bg-white/12 text-white' : 'bg-[#f3ece4] text-[#784f28]'}`}>
-                      {item.zone}
+                      {zoneLabel(item.zone)}
                     </span>
                   </div>
                 </div>
@@ -112,9 +121,9 @@ export default function NowQueueList({
                 <div className={`mt-4 flex flex-wrap items-center gap-2 text-[11px] ${isActive ? 'text-white/70' : 'text-[#5e5e5e]'}`}>
                   <span>{item.source_name}</span>
                   <span>·</span>
-                  <span>{formatPublishedAt(item.published_at)}</span>
+                  <span>{formatPublishedAt(item.published_at, t('now.queue.noDate'))}</span>
                   <span>·</span>
-                  <span>score {item.priority_score.toFixed(2)}</span>
+                  <span>{t('now.labels.score')} {item.priority_score.toFixed(2)}</span>
                 </div>
 
                 <p className={`mt-3 text-xs font-medium ${isActive ? 'text-[#d4edf4]' : 'text-[#0d4656]'}`}>

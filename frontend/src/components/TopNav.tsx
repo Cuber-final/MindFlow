@@ -1,15 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
-
-const navItems = [
-  { path: '/daily-digest', label: 'Daily Digest' },
-  { path: '/now', label: 'Now' },
-  { path: '/interests', label: 'Interests' },
-  { path: '/sources', label: 'Sources' },
-  { path: '/settings', label: 'Settings' },
-];
+import { useI18n } from '../i18n';
 
 export default function TopNav() {
   const location = useLocation();
+  const { locale, setLocale, t } = useI18n();
+  const navItems = [
+    { path: '/daily-digest', label: t('nav.dailyDigest') },
+    { path: '/now', label: t('nav.now') },
+    { path: '/interests', label: t('nav.interests') },
+    { path: '/sources', label: t('nav.sources') },
+    { path: '/settings', label: t('nav.settings') },
+  ];
 
   return (
     <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-xl border-b border-transparent">
@@ -50,9 +51,30 @@ export default function TopNav() {
             </span>
             <input
               type="text"
-              placeholder="Search insights..."
+              placeholder={t('nav.searchPlaceholder')}
               className="w-[clamp(11rem,23vw,16rem)] rounded-lg border-none bg-surface-container-lowest py-2 pl-10 pr-4 text-sm ring-1 ring-outline/10 transition-all outline-none focus:ring-primary/20"
             />
+          </div>
+
+          <div className="inline-flex items-center gap-1 rounded-full border border-[#c0c8cb]/20 bg-white/70 p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setLocale('zh-CN')}
+              className={`rounded-full px-2 py-1 transition-colors ${locale === 'zh-CN' ? 'bg-[#0d4656] text-white' : 'text-[#40484b]'}`}
+              aria-label={t('common.chinese')}
+              title={t('common.chinese')}
+            >
+              中
+            </button>
+            <button
+              type="button"
+              onClick={() => setLocale('en-US')}
+              className={`rounded-full px-2 py-1 transition-colors ${locale === 'en-US' ? 'bg-[#0d4656] text-white' : 'text-[#40484b]'}`}
+              aria-label={t('common.english')}
+              title={t('common.english')}
+            >
+              EN
+            </button>
           </div>
 
           {/* User avatar */}

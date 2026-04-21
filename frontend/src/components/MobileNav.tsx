@@ -1,15 +1,16 @@
 import { Link, useLocation } from 'react-router-dom';
-
-const navItems = [
-  { path: '/daily-digest', label: 'Daily Digest', icon: 'auto_awesome' },
-  { path: '/now', label: 'Now', icon: 'dashboard_customize' },
-  { path: '/interests', label: 'Interests', icon: 'label_important' },
-  { path: '/sources', label: 'Sources', icon: 'rss_feed' },
-  { path: '/settings', label: 'Settings', icon: 'settings_suggest' },
-];
+import { useI18n } from '../i18n';
 
 export default function MobileNav() {
   const location = useLocation();
+  const { t } = useI18n();
+  const navItems = [
+    { path: '/daily-digest', label: t('nav.dailyDigest'), icon: 'auto_awesome' },
+    { path: '/now', label: t('nav.now'), icon: 'dashboard_customize' },
+    { path: '/interests', label: t('nav.interests'), icon: 'label_important' },
+    { path: '/sources', label: t('nav.sources'), icon: 'rss_feed' },
+    { path: '/settings', label: t('nav.settings'), icon: 'settings_suggest' },
+  ];
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant/10 px-6 py-3 flex justify-between items-center z-50">

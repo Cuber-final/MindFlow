@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { configApi, type AIConfig, type AIConfigDraft, type AIConnectionTestResult } from '../api/newsletter';
+import { useI18n } from '../i18n';
 
 type SettingsViewState = 'loading' | 'load_error' | 'unconfigured' | 'configured';
 
@@ -20,6 +21,31 @@ function normalizeDraft(draft: AIConfigDraft): AIConfigDraft {
 }
 
 export default function Settings() {
+  const { locale } = useI18n();
+  const isZh = locale === 'zh-CN';
+  const text = {
+    configuredPlaceholder: isZh ? '已配置（不修改请留空）' : 'Configured (leave empty to keep)',
+    inputApiKey: isZh ? '请输入 API Key' : 'Enter API Key',
+    loadFailedTitle: isZh ? '加载失败，可重试或重新配置' : 'Loading failed. Retry or reconfigure.',
+    loadFailedFallback: isZh ? '无法读取当前配置' : 'Unable to read current configuration',
+    retry: isZh ? '重试' : 'Retry',
+    manualReconfigure: isZh ? '重新手动配置' : 'Manual reconfigure',
+    settingsTitle: isZh ? '设置' : 'Settings',
+    settingsSubtitle: isZh ? '配置 AI 提供商与模型连接。保存前会自动验证当前草稿配置。' : 'Configure your AI provider and model connection. Draft configuration is validated before save.',
+    unconfiguredBanner: isZh ? '尚未完成 AI 配置。请先填写配置，建议先测试连接，再保存。' : 'AI is not configured yet. Fill in your configuration, test connection, then save.',
+    configuredBanner: isZh ? '当前已存在可用配置。若不想替换密钥，请保持 API Key 为空后保存。' : 'A working configuration already exists. Keep API Key empty to preserve current key.',
+    provider: isZh ? 'AI 提供商' : 'AI Provider',
+    customOpenAI: isZh ? '自定义 OpenAI 兼容接口' : 'Custom OpenAI-compatible endpoint',
+    apiKey: isZh ? 'API Key' : 'API Key',
+    baseUrl: isZh ? 'Base URL' : 'Base URL',
+    model: isZh ? '模型' : 'Model',
+    testConnection: isZh ? '测试连接' : 'Test Connection',
+    testing: isZh ? '测试中...' : 'Testing...',
+    saveArchitecture: isZh ? '保存配置' : 'Save Configuration',
+    saving: isZh ? '保存中...' : 'Saving...',
+    usedStoredKey: isZh ? '（已使用已保存的 API Key）' : ' (used stored API Key)',
+  };
+
   const [viewState, setViewState] = useState<SettingsViewState>('loading');
   const [aiConfig, setAiConfig] = useState<AIConfig | null>(null);
   const [formData, setFormData] = useState<AIConfigDraft>(DEFAULT_DRAFT);
@@ -33,8 +59,8 @@ export default function Settings() {
   const isConfigured = viewState === 'configured';
 
   const apiKeyPlaceholder = useMemo(
-    () => (hasStoredApiKey ? '已配置（不修改请留空）' : '请输入 API Key'),
-    [hasStoredApiKey]
+    () => (hasStoredApiKey ? text.configuredPlaceholder : text.inputApiKey),
+    [hasStoredApiKey, text.configuredPlaceholder, text.inputApiKey]
   );
 
   useEffect(() => {
@@ -57,16 +83,16 @@ export default function Settings() {
       });
       setViewState(data.has_api_key ? 'configured' : 'unconfigured');
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : '配置加载失败');
+      setLoadError(error instanceof Error ? error.message : (isZh ? '配置加载失败' : 'Failed to load configuration'));
       setViewState('load_error');
     }
   }
 
   function validateDraft(draft: AIConfigDraft): string | null {
-    if (!draft.provider) return '请填写 Provider';
-    if (!draft.base_url) return '请填写 Base URL';
-    if (!draft.model) return '请填写 Model';
-    if (!draft.api_key && !hasStoredApiKey) return '首次配置必须填写 API Key';
+    if (!draft.provider) return isZh ? '请填写 Provider' : 'Provider is required';
+    if (!draft.base_url) return isZh ? '请填写 Base URL' : 'Base URL is required';
+    if (!draft.model) return isZh ? '请填写 Model' : 'Model is required';
+    if (!draft.api_key && !hasStoredApiKey) return isZh ? '首次配置必须填写 API Key' : 'API Key is required for first-time setup';
     return null;
   }
 
@@ -93,7 +119,7 @@ export default function Settings() {
     } catch (error) {
       setFeedback({
         success: false,
-        message: error instanceof Error ? error.message : '测试连接失败',
+        message: error instanceof Error ? error.message : (isZh ? '测试连接失败' : 'Connection test failed'),
       });
     } finally {
       setTesting(false);
@@ -122,12 +148,12 @@ export default function Settings() {
         keep_existing_api_key: hasStoredApiKey,
       });
 
-      setFeedback({ success: true, message: saveResult.message || 'AI 配置已验证并保存' });
+      setFeedback({ success: true, message: saveResult.message || (isZh ? 'AI 配置已验证并保存' : 'AI configuration verified and saved') });
       await loadConfig();
     } catch (error) {
       setFeedback({
         success: false,
-        message: error instanceof Error ? error.message : '保存失败',
+        message: error instanceof Error ? error.message : (isZh ? '保存失败' : 'Save failed'),
       });
     } finally {
       setSaving(false);
@@ -154,20 +180,20 @@ export default function Settings() {
     return (
       <div className="max-w-3xl mx-auto px-8 py-14">
         <div className="rounded-xl border border-red-200 bg-red-50 p-8">
-          <h2 className="text-xl font-bold text-red-700 mb-3">加载失败，可重试或重新配置</h2>
-          <p className="text-sm text-red-700/90 mb-6">{loadError || '无法读取当前配置'}</p>
+          <h2 className="text-xl font-bold text-red-700 mb-3">{text.loadFailedTitle}</h2>
+          <p className="text-sm text-red-700/90 mb-6">{loadError || text.loadFailedFallback}</p>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => void loadConfig()}
               className="px-5 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700"
             >
-              Retry
+              {text.retry}
             </button>
             <button
               onClick={handleManualReconfigure}
               className="px-5 py-2 rounded border border-red-300 text-red-700 text-sm hover:bg-red-100"
             >
-              重新手动配置
+              {text.manualReconfigure}
             </button>
           </div>
         </div>
@@ -178,39 +204,39 @@ export default function Settings() {
   return (
     <div className="max-w-5xl mx-auto px-8 py-10">
       <header className="mb-10">
-        <h1 className="font-['Newsreader'] text-4xl text-[#1a1c1b] mb-3">Settings</h1>
-        <p className="text-[#5e5e5e]">配置 AI 提供商与模型连接。保存前会自动验证当前草稿配置。</p>
+        <h1 className="font-['Newsreader'] text-4xl text-[#1a1c1b] mb-3">{text.settingsTitle}</h1>
+        <p className="text-[#5e5e5e]">{text.settingsSubtitle}</p>
       </header>
 
       {viewState === 'unconfigured' && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800 text-sm">
-          尚未完成 AI 配置。请先填写配置，建议先测试连接，再保存。
+          {text.unconfiguredBanner}
         </div>
       )}
 
       {isConfigured && (
         <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 text-sm">
-          当前已存在可用配置。若不想替换密钥，请保持 API Key 为空后保存。
+          {text.configuredBanner}
         </div>
       )}
 
       <div className="bg-white rounded-xl border border-[#c0c8cb]/20 p-8 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2 md:col-span-2">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-[#40484b] block">AI Provider</label>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-[#40484b] block">{text.provider}</label>
             <select
               value={formData.provider}
               onChange={(event) => setFormData((prev) => ({ ...prev, provider: event.target.value }))}
               className="w-full bg-[#ffffff] border border-[#c0c8cb]/20 rounded-lg px-4 py-3 text-[#1a1c1b] focus:outline-none focus:ring-1 focus:ring-[#0d4656]/30"
             >
-              <option value="siliconflow">硅基流动 (SiliconFlow)</option>
+              <option value="siliconflow">{isZh ? '硅基流动 (SiliconFlow)' : 'SiliconFlow'}</option>
               <option value="minimax">MiniMax</option>
-              <option value="custom">自定义 OpenAI 兼容接口</option>
+              <option value="custom">{text.customOpenAI}</option>
             </select>
           </div>
 
           <div className="space-y-2 md:col-span-2">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-[#40484b] block">API Key</label>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-[#40484b] block">{text.apiKey}</label>
             <div className="relative">
               <input
                 type={showApiKey ? 'text' : 'password'}
@@ -230,7 +256,7 @@ export default function Settings() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-[#40484b] block">Base URL</label>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-[#40484b] block">{text.baseUrl}</label>
             <input
               type="url"
               value={formData.base_url}
@@ -240,7 +266,7 @@ export default function Settings() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-[11px] font-bold uppercase tracking-widest text-[#40484b] block">Model</label>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-[#40484b] block">{text.model}</label>
             <input
               type="text"
               value={formData.model}
@@ -256,7 +282,7 @@ export default function Settings() {
             disabled={testing || saving}
             className="px-6 py-2 border border-[#c0c8cb] text-[#40484b] text-[11px] font-bold uppercase tracking-widest rounded hover:bg-[#e8e8e6] transition-colors disabled:opacity-50"
           >
-            {testing ? '测试中...' : 'Test Connection'}
+            {testing ? text.testing : text.testConnection}
           </button>
 
           <button
@@ -264,7 +290,7 @@ export default function Settings() {
             disabled={testing || saving}
             className="px-8 py-2 bg-[#0d4656] text-white rounded text-[11px] font-bold uppercase tracking-widest hover:bg-[#2c5e6e] transition-colors disabled:opacity-50"
           >
-            {saving ? '保存中...' : 'Save Architecture'}
+            {saving ? text.saving : text.saveArchitecture}
           </button>
         </div>
       </div>
@@ -278,7 +304,7 @@ export default function Settings() {
           }`}
         >
           {feedback.message}
-          {feedback.used_stored_api_key ? '（已使用已保存的 API Key）' : ''}
+          {feedback.used_stored_api_key ? text.usedStoredKey : ''}
         </div>
       )}
     </div>

@@ -1,23 +1,24 @@
 import { Link, useLocation } from 'react-router-dom';
-
-const navItems = [
-  { path: '/daily-digest', label: 'Daily Digest', icon: 'auto_awesome' },
-  { path: '/now', label: 'Now', icon: 'dashboard_customize' },
-  { path: '/interests', label: 'Interests', icon: 'label_important' },
-  { path: '/sources', label: 'Sources', icon: 'rss_feed' },
-  { path: '/settings', label: 'Settings', icon: 'settings_suggest' },
-];
+import { useI18n } from '../i18n';
 
 export default function Sidebar() {
   const location = useLocation();
+  const { t } = useI18n();
+  const navItems = [
+    { path: '/daily-digest', label: t('nav.dailyDigest'), icon: 'auto_awesome' },
+    { path: '/now', label: t('nav.now'), icon: 'dashboard_customize' },
+    { path: '/interests', label: t('nav.interests'), icon: 'label_important' },
+    { path: '/sources', label: t('nav.sources'), icon: 'rss_feed' },
+    { path: '/settings', label: t('nav.settings'), icon: 'settings_suggest' },
+  ];
 
   return (
     <aside className="hidden lg:flex flex-col h-screen w-64 border-r border-outline-variant/15 bg-surface-container-low py-8 px-4 fixed left-0 top-0 overflow-y-auto">
       {/* Logo */}
       <div className="mb-12 px-2">
         <Link to="/" className="block">
-          <h1 className="font-serif italic text-xl text-on-surface hover:text-primary transition-colors">MindFlow</h1>
-          <p className="text-[11px] font-sans uppercase tracking-widest text-secondary mt-1">Curated Daily Brief</p>
+          <h1 className="font-serif italic text-xl text-on-surface hover:text-primary transition-colors">{t('common.logo')}</h1>
+          <p className="text-[11px] font-sans uppercase tracking-widest text-secondary mt-1">{t('nav.curatedBrief')}</p>
         </Link>
       </div>
 
@@ -48,7 +49,7 @@ export default function Sidebar() {
       <div className="mt-8 px-2">
         <button className="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary py-3 rounded-lg text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm hover:opacity-90 transition-opacity">
           <span className="material-symbols-outlined text-sm">edit</span>
-          New Insight
+          {t('nav.newInsight')}
         </button>
       </div>
 
@@ -59,14 +60,14 @@ export default function Sidebar() {
           className="flex items-center gap-3 px-3 py-1 text-secondary text-[11px] uppercase tracking-widest hover:translate-x-1 transition-transform"
         >
           <span className="material-symbols-outlined text-sm">help_outline</span>
-          Help
+          {t('nav.help')}
         </Link>
         <Link
           to="/privacy"
           className="flex items-center gap-3 px-3 py-1 text-secondary text-[11px] uppercase tracking-widest hover:translate-x-1 transition-transform"
         >
           <span className="material-symbols-outlined text-sm">policy</span>
-          Privacy
+          {t('nav.privacy')}
         </Link>
 
         {/* User Profile */}
@@ -75,8 +76,8 @@ export default function Sidebar() {
             <span className="material-symbols-outlined text-sm">person</span>
           </div>
           <div className="overflow-hidden">
-            <p className="text-xs font-bold truncate">User</p>
-            <p className="text-[10px] text-secondary truncate">Curator Tier</p>
+            <p className="text-xs font-bold truncate">{t('nav.user')}</p>
+            <p className="text-[10px] text-secondary truncate">{t('nav.curatorTier')}</p>
           </div>
         </div>
       </div>

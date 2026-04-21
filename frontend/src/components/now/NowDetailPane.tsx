@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import ReactMarkdown from 'react-markdown';
 import type { NowDetail } from '../../api/newsletter';
+import { useI18n } from '../../i18n';
 
 interface NowDetailPaneProps {
   detail: NowDetail | null;
@@ -10,8 +11,8 @@ interface NowDetailPaneProps {
   onMarkProcessed: () => void;
 }
 
-function formatPublishedAt(value?: string | null) {
-  if (!value) return 'Unknown publication time';
+function formatPublishedAt(value: string | null | undefined, unknownLabel: string) {
+  if (!value) return unknownLabel;
   return dayjs(value).format('MMMM D, YYYY · HH:mm');
 }
 
@@ -22,6 +23,14 @@ export default function NowDetailPane({
   onMarkRead,
   onMarkProcessed,
 }: NowDetailPaneProps) {
+  const { t } = useI18n();
+  const zoneLabel = (zone: string) => {
+    if (zone === 'main') return t('now.zones.main');
+    if (zone === 'explore') return t('now.zones.explore');
+    if (zone === 'discover' || zone === 'surprise') return t('now.zones.discover');
+    return zone;
+  };
+
   if (loading) {
     return (
       <section className="rounded-[32px] border border-[#c0c8cb]/15 bg-white p-8 shadow-[0_20px_60px_rgba(26,28,27,0.03)]">
@@ -38,10 +47,10 @@ export default function NowDetailPane({
   if (!detail) {
     return (
       <section className="rounded-[32px] border border-dashed border-[#c0c8cb]/20 bg-white p-12 text-center shadow-[0_20px_60px_rgba(26,28,27,0.03)]">
-        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#5e5e5e]">Detail reader</p>
-        <h3 className="mt-4 font-headline text-3xl text-[#1a1c1b]">Choose an item from the queue</h3>
+        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#5e5e5e]">{t('now.detail.title')}</p>
+        <h3 className="mt-4 font-headline text-3xl text-[#1a1c1b]">{t('now.detail.chooseItem')}</h3>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-[#5e5e5e]">
-          The selected item will expand into summary, body, and action controls here.
+          {t('now.detail.chooseItemHint')}
         </p>
       </section>
     );
@@ -55,9 +64,9 @@ export default function NowDetailPane({
         <div className="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-[0.24em] text-[#5e5e5e]">
           <span>{detail.source_name}</span>
           <span>·</span>
-          <span>{formatPublishedAt(detail.published_at)}</span>
+          <span>{formatPublishedAt(detail.published_at, t('now.detail.unknownPublicationTime'))}</span>
           <span>·</span>
-          <span>{detail.zone}</span>
+          <span>{zoneLabel(detail.zone)}</span>
         </div>
 
         <h1 className="mt-5 font-headline text-4xl leading-tight text-[#1a1c1b] md:text-5xl">{detail.title}</h1>
@@ -67,13 +76,13 @@ export default function NowDetailPane({
             {detail.priority_reason}
           </span>
           <span className="rounded-full bg-[#f4f4f2] px-3 py-1 text-[11px] text-[#5e5e5e]">
-            score {detail.priority_score.toFixed(2)}
+            {t('now.labels.score')} {detail.priority_score.toFixed(2)}
           </span>
           {detail.is_read && (
-            <span className="rounded-full bg-[#dce8eb] px-3 py-1 text-[11px] text-[#0d4656]">Read</span>
+            <span className="rounded-full bg-[#dce8eb] px-3 py-1 text-[11px] text-[#0d4656]">{t('now.labels.read')}</span>
           )}
           {detail.is_processed && (
-            <span className="rounded-full bg-[#efe7dc] px-3 py-1 text-[11px] text-[#784f28]">Processed</span>
+            <span className="rounded-full bg-[#efe7dc] px-3 py-1 text-[11px] text-[#784f28]">{t('now.labels.processed')}</span>
           )}
         </div>
 
@@ -85,7 +94,7 @@ export default function NowDetailPane({
             className="inline-flex items-center gap-2 rounded-full border border-[#0d4656]/18 px-5 py-3 text-sm font-semibold text-[#0d4656] transition-colors hover:bg-[#0d4656]/6 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <span className="material-symbols-outlined text-base">mark_email_read</span>
-            {pendingAction === 'read' ? 'Updating…' : detail.is_read ? 'Marked read' : 'Mark read'}
+            {pendingAction === 'read' ? t('now.actions.updating') : detail.is_read ? t('now.actions.markedRead') : t('now.actions.markRead')}
           </button>
           <button
             type="button"
@@ -94,7 +103,7 @@ export default function NowDetailPane({
             className="inline-flex items-center gap-2 rounded-full bg-[#0d4656] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0b3f4d] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <span className="material-symbols-outlined text-base">done_all</span>
-            {pendingAction === 'processed' ? 'Updating…' : detail.is_processed ? 'Processed' : 'Mark processed'}
+            {pendingAction === 'processed' ? t('now.actions.updating') : detail.is_processed ? t('now.labels.processed') : t('now.actions.markProcessed')}
           </button>
          {sourceUrl ? (
            <a
@@ -104,12 +113,12 @@ export default function NowDetailPane({
              className="inline-flex items-center gap-2 rounded-full border border-[#c0c8cb]/20 px-5 py-3 text-sm font-semibold text-[#40484b] transition-colors hover:border-[#0d4656]/20 hover:text-[#0d4656]"
            >
              <span className="material-symbols-outlined text-base">arrow_outward</span>
-             Read Source
+             {t('now.actions.readSource')}
            </a>
          ) : (
            <span className="inline-flex items-center gap-2 rounded-full border border-[#c0c8cb]/12 px-5 py-3 text-sm text-[#8a8f92]">
              <span className="material-symbols-outlined text-base">link_off</span>
-             Source unavailable
+             {t('now.actions.sourceUnavailable')}
            </span>
          )}
        </div>
@@ -117,13 +126,13 @@ export default function NowDetailPane({
 
       <div className="space-y-8 px-8 py-8">
         <section className="rounded-[28px] bg-[#f7f5ef] px-6 py-6">
-          <p className="text-[10px] uppercase tracking-[0.24em] text-[#5e5e5e]">AI Summary</p>
+          <p className="text-[10px] uppercase tracking-[0.24em] text-[#5e5e5e]">{t('now.detail.aiSummary')}</p>
           <p className="mt-4 text-lg leading-8 text-[#1a1c1b]">{detail.ai_summary}</p>
         </section>
 
         {detail.dialectical_analysis && (
           <section className="rounded-[28px] border border-[#c0c8cb]/12 bg-white px-6 py-6">
-            <p className="text-[10px] uppercase tracking-[0.24em] text-[#5e5e5e]">Dialectical analysis</p>
+            <p className="text-[10px] uppercase tracking-[0.24em] text-[#5e5e5e]">{t('now.detail.dialecticalAnalysis')}</p>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-[#40484b]">{detail.dialectical_analysis}</p>
           </section>
         )}

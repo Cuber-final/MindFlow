@@ -5,19 +5,21 @@ import {
   type NowDetail,
   type NowItem,
 } from '../api/newsletter';
+import { useI18n } from '../i18n';
 import NowContextRail from '../components/now/NowContextRail';
 import NowDetailPane from '../components/now/NowDetailPane';
 import NowQueueList from '../components/now/NowQueueList';
 
-function getErrorMessage(error: unknown) {
+function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error) return error.message;
-  return 'Something went wrong while loading the workbench.';
+  return fallback;
 }
 
 export default function Now() {
   const navigate = useNavigate();
   const { anchorId } = useParams<{ anchorId: string }>();
   const [searchParams] = useSearchParams();
+  const { t } = useI18n();
 
   const activeAnchorId = anchorId ? Number(anchorId) : null;
   const fromDigestDate = searchParams.get('from') === 'digest' ? searchParams.get('date') : null;
@@ -63,7 +65,7 @@ export default function Now() {
 
       return nextAnchorId;
     } catch (queueError) {
-      setError(getErrorMessage(queueError));
+      setError(getErrorMessage(queueError, t('now.errors.loadWorkbench')));
       return null;
     } finally {
       setQueueLoading(false);
@@ -85,7 +87,7 @@ export default function Now() {
         return;
       }
       setDetail(null);
-      setError(getErrorMessage(detailError));
+      setError(getErrorMessage(detailError, t('now.errors.loadDetail')));
     } finally {
       if (requestId === detailRequestIdRef.current) {
         setDetailLoading(false);
@@ -153,7 +155,7 @@ export default function Now() {
         await loadDetail(activeAnchorId);
       }
     } catch (stateError) {
-      setError(getErrorMessage(stateError));
+      setError(getErrorMessage(stateError, t('now.errors.updateState')));
     } finally {
       setPendingAction(null);
     }
@@ -162,13 +164,12 @@ export default function Now() {
   return (
     <div className="space-y-8">
       <header className="rounded-[32px] border border-[#c0c8cb]/15 bg-[#f7f5ef] px-8 py-8 shadow-[0_24px_70px_rgba(26,28,27,0.04)]">
-        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#5e5e5e]">Daily Digest → Detail → Read Source</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-[#5e5e5e]">{t('now.header.flow')}</p>
         <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="font-headline text-5xl leading-none tracking-tight text-[#1a1c1b] md:text-6xl">Now Workbench</h1>
+            <h1 className="font-headline text-5xl leading-none tracking-tight text-[#1a1c1b] md:text-6xl">{t('now.header.title')}</h1>
             <p className="mt-4 max-w-3xl text-lg leading-8 text-[#40484b]">
-              Prioritized reading for the items that still matter right now. Open one item, read the synthesis,
-              decide whether it is handled, then move on to the next signal.
+              {t('now.header.description')}
             </p>
           </div>
           <button
@@ -177,7 +178,7 @@ export default function Now() {
             className="inline-flex items-center gap-2 self-start rounded-full border border-[#c0c8cb]/20 px-4 py-2 text-sm font-medium text-[#40484b] transition-colors hover:border-[#0d4656]/20 hover:text-[#0d4656]"
           >
             <span className="material-symbols-outlined text-base">{queueCollapsed ? 'right_panel_open' : 'left_panel_close'}</span>
-            {queueCollapsed ? 'Expand queue' : 'Collapse queue'}
+            {queueCollapsed ? t('now.actions.expandQueue') : t('now.actions.collapseQueue')}
           </button>
         </div>
       </header>

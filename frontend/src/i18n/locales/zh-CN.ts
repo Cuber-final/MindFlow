@@ -1,0 +1,90 @@
+import type { TranslationDictionary } from '../types';
+
+const zhCN: TranslationDictionary = {
+  common: {
+    logo: 'MindFlow',
+    language: '语言',
+    chinese: '中文',
+    english: 'English',
+  },
+  nav: {
+    dailyDigest: '每日简报',
+    now: 'Now 工作台',
+    interests: '兴趣',
+    sources: '信源',
+    settings: '设置',
+    searchPlaceholder: '搜索洞察...',
+    curatedBrief: '精选每日简报',
+    newInsight: '新建洞察',
+    help: '帮助',
+    privacy: '隐私',
+    user: '用户',
+    curatorTier: '策展层级',
+  },
+  now: {
+    header: {
+      flow: 'Daily Digest → Detail → Read Source',
+      title: 'Now 工作台',
+      description: '优先处理当下仍然重要的内容。逐条阅读系统摘要，决定是否处理，然后进入下一条信号。',
+    },
+    errors: {
+      loadWorkbench: '加载工作台时发生错误。',
+      loadDetail: '加载详情内容时发生错误。',
+      updateState: '更新状态失败，请稍后重试。',
+    },
+    actions: {
+      expandQueue: '展开队列',
+      collapseQueue: '收起队列',
+      markRead: '标记已读',
+      markedRead: '已标记已读',
+      markProcessed: '标记已处理',
+      readSource: '阅读原文',
+      sourceUnavailable: '原文不可用',
+      updating: '更新中…',
+    },
+    labels: {
+      read: '已读',
+      processed: '已处理',
+      score: '评分',
+    },
+    zones: {
+      main: '主频道',
+      explore: '探索',
+      discover: '发现',
+    },
+    context: {
+      posture: '工作台状态',
+      title: 'Now',
+      description: '短时窗优先队列，聚焦未来 24–48 小时仍值得处理的内容。',
+      queue: '队列',
+      activeItems: '活跃条目',
+      unread: '未读',
+      notMarkedRead: '尚未标记已读',
+      lastRefresh: '最近刷新',
+      unknown: '未知',
+      arrivalContext: '进入上下文',
+      openedFromPrefix: '来自',
+      openedFromSuffix: '·',
+      signalMap: '信号地图',
+      selectItemHint: '选择一个条目以查看来源上下文和当前信号状态。',
+      topTags: '队列高频标签',
+      noTags: '暂无标签数据。',
+    },
+    queue: {
+      title: '队列',
+      priorityStack: '优先级列表',
+      empty: '当前队列中没有待处理条目。',
+      noDate: '无日期',
+    },
+    detail: {
+      title: '详情阅读器',
+      chooseItem: '请先从队列中选择一条内容',
+      chooseItemHint: '选中条目后，这里会展示摘要、正文与处理动作。',
+      unknownPublicationTime: '发布时间未知',
+      aiSummary: 'AI 摘要',
+      dialecticalAnalysis: '辩证分析',
+    },
+  },
+};
+
+export default zhCN;
