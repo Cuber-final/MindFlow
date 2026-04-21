@@ -6,6 +6,8 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+.venv
+backend/.venv
 venv/
 
 # Env files
@@ -19,9 +21,12 @@ data/
 
 # Frontend dependencies and build output
 frontend/node_modules/
+frontend/node_modules
 frontend/dist/
 
 .firecrawl
 .omc
 .omx
 .omx/
+
+.worktrees/
