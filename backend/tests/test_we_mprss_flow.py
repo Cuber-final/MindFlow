@@ -204,12 +204,13 @@ class TestWeMpRssDiscoveryState:
     @pytest.mark.asyncio
     async def test_fetch_source_articles_marks_new_we_mp_rss_entries_waiting_for_refresh(self):
         with patch("services.crawler.get_source_by_id", new=AsyncMock(return_value=WE_MP_RSS_SOURCE)):
-            with patch("services.crawler.get_article_by_external_id", new=AsyncMock(return_value=None)):
-                with patch("services.crawler.update_source_fetch_time", new=AsyncMock(return_value=None)):
-                    with patch("services.crawler.add_fetch_log", new=AsyncMock(return_value=None)):
-                        with patch("services.crawler.fetch_feed_document", new=AsyncMock(return_value=(WE_MP_RSS_JSON_FEED, "application/json"))):
-                            with patch("services.crawler.create_article", new=AsyncMock(return_value=101)) as mock_create_article:
-                                count, message = await crawler.fetch_source_articles(WE_MP_RSS_SOURCE["id"])
+            with patch("services.crawler.ensure_source_auth_state", new=AsyncMock(return_value={"source": WE_MP_RSS_SOURCE, "changed": False})):
+                with patch("services.crawler.get_article_by_external_id", new=AsyncMock(return_value=None)):
+                    with patch("services.crawler.update_source_fetch_time", new=AsyncMock(return_value=None)):
+                        with patch("services.crawler.add_fetch_log", new=AsyncMock(return_value=None)):
+                            with patch("services.crawler.fetch_feed_document", new=AsyncMock(return_value=(WE_MP_RSS_JSON_FEED, "application/json"))):
+                                with patch("services.crawler.create_article", new=AsyncMock(return_value=101)) as mock_create_article:
+                                    count, message = await crawler.fetch_source_articles(WE_MP_RSS_SOURCE["id"])
 
         assert count == 1
         assert message == "抓取成功"
