@@ -154,6 +154,20 @@ async def update_source(source_id: int, **kwargs) -> bool:
         return True
 
 
+async def update_source_auth_state(
+    source_id: int,
+    *,
+    auth_key: str,
+    config: dict,
+) -> bool:
+    """Persist cached we-mp-rss auth state for a source."""
+    return await update_source(
+        source_id,
+        auth_key=auth_key or "",
+        config=config or {},
+    )
+
+
 async def delete_source(source_id: int) -> bool:
     """Delete a news source. Returns True if deleted, False if not found."""
     async with get_db() as session:

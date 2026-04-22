@@ -8,6 +8,7 @@ from database import (
     get_articles_ready_for_anchor_extraction,
     get_anchors_by_article,
     get_digest_by_date,
+    update_source_auth_state,
     update_article_content_refresh,
 )
 from services.ai import extract_anchor
@@ -74,7 +75,15 @@ async def process_pending_we_mp_rss_articles() -> int:
             article=article,
             poll_interval_seconds=1.0,
         )
-        await update_article_content_refresh(row["article_id"], **refresh_result)
+        article_update = dict(refresh_result)
+        source_update = article_update.pop("source_update", None)
+        if isinstance(source_update, dict):
+            await update_source_auth_state(
+                row["source_id"],
+                auth_key=source_update.get("auth_key") or "",
+                config=source_update.get("config") or {},
+            )
+        await update_article_content_refresh(row["article_id"], **article_update)
         processed += 1
 
     return processed

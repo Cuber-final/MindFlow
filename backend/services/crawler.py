@@ -14,9 +14,14 @@ from database import (
     create_article,
     get_article_by_external_id,
     get_source_by_id,
+    update_source_auth_state,
     update_source_fetch_time,
 )
-from services.we_mprss import WE_MPRSS_SOURCE_TYPE, normalize_feed_url_for_discovery
+from services.we_mprss import (
+    WE_MPRSS_SOURCE_TYPE,
+    ensure_source_auth_state,
+    normalize_feed_url_for_discovery,
+)
 
 DEFAULT_TIMEOUT = 30
 MAX_RETRIES = 3
@@ -382,6 +387,16 @@ async def fetch_source_articles(source_id: int) -> Tuple[int, str]:
         feed_url = _resolve_feed_url(source, source_config)
         if source_type == WE_MPRSS_SOURCE_TYPE:
             feed_url = normalize_feed_url_for_discovery(feed_url)
+            auth_state = await _maybe_await(ensure_source_auth_state(source))
+            source = auth_state.get("source") or source
+            if auth_state.get("changed"):
+                await _maybe_await(
+                    update_source_auth_state(
+                        source_id,
+                        auth_key=source.get("auth_key") or "",
+                        config=source.get("config") or {},
+                    )
+                )
         payload, content_type = await fetch_feed_document(feed_url, source.get("auth_key") or "")
         feed_meta, entries = parse_feed_document(payload, content_type)
 
