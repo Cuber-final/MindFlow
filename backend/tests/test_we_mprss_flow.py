@@ -65,6 +65,26 @@ class TestWeMpRssFeedNormalization:
 
         assert normalized == "http://127.0.0.1:8001/feed/MP_WXS_3941633310.json?limit=5&offset=10"
 
+    def test_rewrite_loopback_feed_url_to_host_docker_internal_inside_container(self):
+        from services.we_mprss import rewrite_local_service_url_for_runtime
+
+        with patch("services.we_mprss.running_inside_docker", return_value=True):
+            rewritten = rewrite_local_service_url_for_runtime(
+                "http://127.0.0.1:8001/feed/MP_WXS_3941633310.json?limit=5"
+            )
+
+        assert rewritten == "http://host.docker.internal:8001/feed/MP_WXS_3941633310.json?limit=5"
+
+    def test_keep_loopback_feed_url_unchanged_outside_container(self):
+        from services.we_mprss import rewrite_local_service_url_for_runtime
+
+        with patch("services.we_mprss.running_inside_docker", return_value=False):
+            rewritten = rewrite_local_service_url_for_runtime(
+                "http://localhost:8001/feed/MP_WXS_3941633310.json?limit=5"
+            )
+
+        assert rewritten == "http://localhost:8001/feed/MP_WXS_3941633310.json?limit=5"
+
 
 class TestWeMpRssAuthStability:
     @pytest.mark.asyncio

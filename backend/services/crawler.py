@@ -21,6 +21,7 @@ from services.we_mprss import (
     WE_MPRSS_SOURCE_TYPE,
     ensure_source_auth_state,
     normalize_feed_url_for_discovery,
+    rewrite_local_service_url_for_runtime,
 )
 
 DEFAULT_TIMEOUT = 30
@@ -387,6 +388,7 @@ async def fetch_source_articles(source_id: int) -> Tuple[int, str]:
         feed_url = _resolve_feed_url(source, source_config)
         if source_type == WE_MPRSS_SOURCE_TYPE:
             feed_url = normalize_feed_url_for_discovery(feed_url)
+            feed_url = rewrite_local_service_url_for_runtime(feed_url)
             auth_state = await _maybe_await(ensure_source_auth_state(source))
             source = auth_state.get("source") or source
             if auth_state.get("changed"):

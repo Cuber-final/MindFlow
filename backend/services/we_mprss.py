@@ -5,6 +5,7 @@ import os
 import re
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, Optional
+from pathlib import Path
 from urllib.parse import ParseResult, parse_qsl, urlencode, urlparse, urlunparse
 
 import httpx
@@ -14,6 +15,7 @@ WE_MPRSS_SOURCE_TYPE = "we_mp_rss"
 WE_MPRSS_FEED_PATH_RE = re.compile(r"^/feed/(?P<feed_id>[^/]+?)\.(?P<ext>rss|xml|atom|json)$", re.IGNORECASE)
 WE_MPRSS_AUTH_CONFIG_KEY = "we_mprss_auth"
 DEFAULT_REFRESH_TIMEOUT_SECONDS = 30
+DOCKER_LOOPBACK_ALIAS = "host.docker.internal"
 
 
 def is_we_mprss_feed_url(raw_url: str) -> bool:
@@ -41,8 +43,32 @@ def normalize_feed_url_for_discovery(raw_url: str) -> str:
     return urlunparse(normalized)
 
 
+def running_inside_docker() -> bool:
+    return Path("/.dockerenv").exists()
+
+
+def rewrite_local_service_url_for_runtime(raw_url: str) -> str:
+    parsed = urlparse(raw_url)
+    host = (parsed.hostname or "").strip().lower()
+    if not running_inside_docker():
+        return raw_url
+    if host not in {"127.0.0.1", "localhost"}:
+        return raw_url
+
+    port = f":{parsed.port}" if parsed.port else ""
+    rewritten = ParseResult(
+        scheme=parsed.scheme,
+        netloc=f"{DOCKER_LOOPBACK_ALIAS}{port}",
+        path=parsed.path,
+        params=parsed.params,
+        query=parsed.query,
+        fragment=parsed.fragment,
+    )
+    return urlunparse(rewritten)
+
+
 def get_service_base_url(feed_url: str) -> str:
-    parsed = urlparse(feed_url)
+    parsed = urlparse(rewrite_local_service_url_for_runtime(feed_url))
     return f"{parsed.scheme}://{parsed.netloc}"
 
 
