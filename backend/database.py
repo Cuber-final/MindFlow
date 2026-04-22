@@ -154,6 +154,20 @@ async def update_source(source_id: int, **kwargs) -> bool:
         return True
 
 
+async def update_source_auth_state(
+    source_id: int,
+    *,
+    auth_key: str,
+    config: dict,
+) -> bool:
+    """Persist cached we-mp-rss auth state for a source."""
+    return await update_source(
+        source_id,
+        auth_key=auth_key or "",
+        config=config or {},
+    )
+
+
 async def delete_source(source_id: int) -> bool:
     """Delete a news source. Returns True if deleted, False if not found."""
     async with get_db() as session:
@@ -230,6 +244,13 @@ async def create_article(
     external_id: str = "",
     link: str = "",
     content: str = "",
+    content_html: str = "",
+    content_refresh_status: str = "ready",
+    content_refresh_task_id: Optional[str] = None,
+    content_refresh_requested_at: Optional[datetime] = None,
+    content_refresh_checked_at: Optional[datetime] = None,
+    content_refreshed_at: Optional[datetime] = None,
+    content_refresh_error: Optional[str] = None,
     author: str = "",
     published_at: datetime = None
 ) -> int:
@@ -241,6 +262,13 @@ async def create_article(
             external_id=external_id,
             link=link,
             content=content,
+            content_html=content_html,
+            content_refresh_status=content_refresh_status,
+            content_refresh_task_id=content_refresh_task_id,
+            content_refresh_requested_at=content_refresh_requested_at,
+            content_refresh_checked_at=content_refresh_checked_at,
+            content_refreshed_at=content_refreshed_at,
+            content_refresh_error=content_refresh_error,
             author=author,
             published_at=published_at
         )
@@ -259,6 +287,22 @@ async def update_article_summary(article_id: int, summary: str):
         article = result.scalar_one_or_none()
         if article:
             article.summary = summary
+
+
+async def update_article_content_refresh(article_id: int, **kwargs) -> bool:
+    """Update content refresh fields for one article."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(Article).where(Article.id == article_id)
+        )
+        article = result.scalar_one_or_none()
+        if not article:
+            return False
+
+        for key, value in kwargs.items():
+            if hasattr(article, key):
+                setattr(article, key, value)
+        return True
 
 
 def _row_to_mapping(row) -> Optional[Dict[str, Any]]:
@@ -315,6 +359,115 @@ async def get_recent_now_candidates(hours: int = 48, limit: int = 60) -> List[Di
                 func.coalesce(Article.published_at, Article.fetched_at, AnchorPoint.created_at).desc(),
                 AnchorPoint.significance.desc(),
             )
+            .limit(limit)
+        )
+        return [_row_to_mapping(row) for row in result.all()]
+
+
+async def get_articles_due_for_content_refresh(
+    delay_minutes: int = 10,
+    limit: int = 20,
+) -> List[Dict[str, Any]]:
+    """Get we-mp-rss articles ready to request protected content refresh."""
+    cutoff = datetime.utcnow() - timedelta(minutes=delay_minutes)
+
+    async with get_db() as session:
+        result = await session.execute(
+            select(
+                Article.id.label("article_id"),
+                Article.source_id.label("source_id"),
+                Article.external_id.label("external_id"),
+                Article.title.label("title"),
+                Article.link.label("link"),
+                Article.fetched_at.label("fetched_at"),
+                Article.content_refresh_status.label("content_refresh_status"),
+                Article.content_refresh_task_id.label("content_refresh_task_id"),
+                NewsSource.source_type.label("source_type"),
+                NewsSource.api_base_url.label("api_base_url"),
+                NewsSource.auth_key.label("auth_key"),
+                NewsSource.config.label("source_config"),
+            )
+            .select_from(Article)
+            .join(NewsSource, Article.source_id == NewsSource.id)
+            .where(
+                NewsSource.source_type == "we_mp_rss",
+                Article.content_refresh_status == "waiting_for_refresh",
+                Article.external_id.is_not(None),
+                Article.external_id != "",
+                Article.fetched_at <= cutoff,
+            )
+            .order_by(Article.fetched_at.asc())
+            .limit(limit)
+        )
+        return [_row_to_mapping(row) for row in result.all()]
+
+
+async def get_articles_with_active_refresh_tasks(limit: int = 20) -> List[Dict[str, Any]]:
+    """Get we-mp-rss articles whose protected refresh tasks should be polled."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(
+                Article.id.label("article_id"),
+                Article.source_id.label("source_id"),
+                Article.external_id.label("external_id"),
+                Article.title.label("title"),
+                Article.link.label("link"),
+                Article.content_refresh_status.label("content_refresh_status"),
+                Article.content_refresh_task_id.label("content_refresh_task_id"),
+                Article.content_refresh_requested_at.label("content_refresh_requested_at"),
+                NewsSource.source_type.label("source_type"),
+                NewsSource.api_base_url.label("api_base_url"),
+                NewsSource.auth_key.label("auth_key"),
+                NewsSource.config.label("source_config"),
+            )
+            .select_from(Article)
+            .join(NewsSource, Article.source_id == NewsSource.id)
+            .where(
+                NewsSource.source_type == "we_mp_rss",
+                Article.content_refresh_status.in_(["refresh_requested", "refresh_running"]),
+                Article.content_refresh_task_id.is_not(None),
+            )
+            .order_by(Article.content_refresh_requested_at.asc().nullsfirst(), Article.id.asc())
+            .limit(limit)
+        )
+        return [_row_to_mapping(row) for row in result.all()]
+
+
+async def get_articles_ready_for_anchor_extraction(
+    hours: int = 168,
+    limit: int = 100,
+) -> List[Dict[str, Any]]:
+    """Get recent articles that are ready for anchor extraction."""
+    cutoff = datetime.utcnow() - timedelta(hours=hours)
+
+    async with get_db() as session:
+        result = await session.execute(
+            select(
+                Article.id.label("article_id"),
+                Article.source_id.label("source_id"),
+                Article.external_id.label("external_id"),
+                Article.title.label("title"),
+                Article.link.label("link"),
+                Article.content.label("content"),
+                Article.content_html.label("content_html"),
+                Article.summary.label("summary"),
+                Article.author.label("author"),
+                Article.published_at.label("published_at"),
+                Article.fetched_at.label("fetched_at"),
+                Article.content_refresh_status.label("content_refresh_status"),
+                NewsSource.source_type.label("source_type"),
+                NewsSource.name.label("source_name"),
+            )
+            .select_from(Article)
+            .join(NewsSource, Article.source_id == NewsSource.id)
+            .where(
+                Article.fetched_at >= cutoff,
+                or_(
+                    NewsSource.source_type != "we_mp_rss",
+                    Article.content_refresh_status == "detail_fetched",
+                ),
+            )
+            .order_by(Article.fetched_at.desc(), Article.id.desc())
             .limit(limit)
         )
         return [_row_to_mapping(row) for row in result.all()]
