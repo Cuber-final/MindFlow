@@ -1,21 +1,16 @@
 FROM python:3.11-slim
 
+WORKDIR /app
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV POETRY_VERSION=2.3.2
-ENV POETRY_NO_INTERACTION=1
-ENV POETRY_VIRTUALENVS_CREATE=false
-
-WORKDIR /app/backend
-
-RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
 # 先安装依赖以最大化利用缓存
-COPY pyproject.toml poetry.toml ./
-RUN poetry install --only main --no-root
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# 再复制后端源码
-COPY . .
+# 再复制后端源码，保持 /app/backend 目录结构兼容现有路径逻辑
+COPY . ./backend
 
 ENV PYTHONPATH=/app/backend
 

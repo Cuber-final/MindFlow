@@ -5,7 +5,6 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.venv/
 .venv
 backend/.venv
 venv/
@@ -24,8 +23,6 @@ frontend/node_modules/
 frontend/node_modules
 frontend/dist/
 
-.firecrawl
 .omc/
 .omx/
-.tmp/
 .worktrees/

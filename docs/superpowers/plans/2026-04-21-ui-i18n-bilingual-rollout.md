@@ -1,6 +1,8 @@
 # MindFlow UI 双语化执行计划（中文 / English）
 
 > 执行模式：`$executing-plans`
+>
+> **Execution status (2026-04-21):** ✅ Verified complete. See `docs/superpowers/progress/2026-04-21-ui-i18n-bilingual-rollout-progress.md` for completion summary and verification notes.
 > 
 > 目标：除产品 Logo「MindFlow」外，将当前前端 UI 静态文案全部切换为可双语显示，并提供中英文切换能力。
 

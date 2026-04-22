@@ -1,71 +1,58 @@
 # MindFlow
 
-> AI 驱动的私有化信息工作台：以 **Daily Digest + Now** 为双核心入口
+> 面向个人与小团队的私有化 AI 信息工作台，把“收集”变成“编排、判断与处理”。
 
-## 当前项目状态（2026-04-21）
+MindFlow 不是另一个只会堆时间线的资讯阅读器。它把信息消费拆成两个更符合实际工作的入口：
 
-### 已完成的主链路
-- ✅ Settings 页支持 `loading / load_error / unconfigured / configured` 四态
-- ✅ AI 配置支持“先测试、再保存”，并实现 `api_key` 保留语义
-- ✅ `Daily Digest` 支持按周查询 / 周切换 / 无简报日期灰显
-- ✅ Digest Main Channel 保留“减少这类话题内容”负反馈 + Undo
-- ✅ 主阅读链路已切换为 `Daily Digest -> Now Detail -> Read Source`
-- ✅ 新增 `Now` 后端队列、详情、已读 / 已处理状态更新
-- ✅ 前端已切换到 `/daily-digest` + `/now` 双核心路由
-- ✅ `Now` 三栏工作台已接入优先级队列、摘要阅读和状态流转
-- ✅ 前端 `fetchApi` 已兼容 `204 No Content`
-- ✅ Docker 部署下前端已通过 nginx 代理 `/api` 到后端，避免白屏和数据契约错读
-- ✅ 前端静态 UI 文案已支持中英文双语切换（TopNav `中 / EN` 按钮触发）
-- ✅ 语言偏好已持久化到 `localStorage(mindflow.locale)`，首次访问支持浏览器语言自动兜底
+- `Daily Digest` 用来回答“今天最值得先看什么”
+- `Now` Workbench 用来回答“接下来 24-48 小时我还要处理什么”
 
-### 仍属于后续迭代的内容
-- ⏳ Exploration Zone / Surprise Box 的更深交互
-- ⏳ 候选标签 schema 与 API 契约继续收敛
-- ⏳ 批量抓取（Manual Crawl All）汇总反馈
-- ⏳ 更复杂的推荐抑制 / 质量反馈机制
-- ⏳ 多用户场景下把 workbench state 从 `articles` 中拆出
+项目强调自托管、可替换模型、可控信息源，以及围绕兴趣偏好与行为反馈的持续调优能力，适合需要长期追踪行业、技术或主题信号的使用场景。
 
-## 功能特性
+## 产品价值
 
-### 核心功能
-- 📰 **Daily Digest** - 每日自动生成结构化资讯简报，作为当天信息入口
-- 🗂️ **Now Workbench** - 针对未来 24–48 小时仍值得处理的内容队列与详情工作台
-- 🤖 **AI 智能加工** - 自动从文章中提取关键洞察，生成辩证性分析（支持/质疑/延伸）
-- 🎯 **兴趣标签系统** - 用户可管理兴趣标签，AI 学习偏好实现个性化推荐
-- 📊 **行为跟踪** - 自动收集阅读行为（停留、点击、滚动），持续优化推荐
-- 🔄 **探索机制** - 主航道 60% + 探索区 30% + 惊喜箱 10%，避免信息茧房
+- **从信息堆积转向信息编排**
+  - Daily Digest 负责把当天值得先看的内容做成结构化入口，而不是把所有抓取结果原样堆给用户。
+- **把“阅读”延伸到“待处理”**
+  - Now Workbench 承接真正需要后续行动、继续判断或稍后再看的内容，避免看完即丢。
+- **私有化可控**
+  - 支持本地或内网部署，自主控制数据库、模型服务和信息源接入方式。
+- **反馈可闭环**
+  - 同时利用显式反馈和行为信号，对内容权重与推荐结果持续修正。
 
-### 信息源
-- 📡 **原生 RSS / Atom / JSON Feed** - 统一按 feed URL 接入
-- 🔁 **RSSHub 路由源** - 以完整 RSSHub route URL 作为接入源
-- 🧾 **we-mp-rss 输出源** - 以本地或内网部署生成的 `/feed/...` URL 接入
+## 核心能力
 
-### 技术亮点
-- **每日简报自动生成** - 定时抓取 + AI 锚点提取 + 简报合成
-- **显式 + 隐式反馈** - Show/Hide 按钮 + 行为信号驱动权重更新
-- **实时权重调整** - 基于信号衰减和多样性惩罚的自适应算法
-- **双语 UI 基础设施** - 内置 `I18nProvider/useI18n/t()`，覆盖核心页面与导航文案
-
-## 双语 UI（中文 / English）
-
-- 语言切换入口：顶部导航栏右侧 `中 / EN` 按钮
-- 切换机制：前端 `I18nProvider` + 词典映射（`frontend/src/i18n/`）
-- 持久化策略：写入 `localStorage` 的 `mindflow.locale`
-- 默认策略：优先读取已保存语言；若无保存值，则根据浏览器语言自动选择（`zh-*` -> 中文，否则英文）
-- 当前范围：导航壳层、Now、Daily Digest、Interests、Sources、Settings 等页面静态文案
-- 约束说明：产品 Logo `MindFlow` 保持不翻译
+- **Daily Digest**
+  - 自动生成结构化每日简报，支持按日期与按周浏览。
+- **Now Workbench**
+  - 面向未来 24-48 小时仍值得处理的内容队列、详情与状态流转。
+- **多源接入**
+  - 支持原生 RSS / Atom / JSON Feed、RSSHub 路由，以及由 `we-mp-rss` 生成的 feed 地址。
+- **AI 加工**
+  - 支持通过 OpenAI 兼容接口完成摘要、洞察提取与内容编排。
+- **兴趣与反馈机制**
+  - 支持兴趣标签管理、内容负反馈与行为采集。
+- **双语界面**
+  - 内置中文 / English 静态 UI 切换与本地偏好持久化。
 
 ## 技术栈
 
-- **后端**: FastAPI + SQLAlchemy + PostgreSQL + APScheduler
-- **前端**: React + TypeScript + TailwindCSS
-- **AI**: OpenAI 兼容接口 (硅基流动 / MiniMax)
+- **后端**
+  - FastAPI、SQLAlchemy Async、Alembic、PostgreSQL、pgvector、APScheduler、httpx
+- **前端**
+  - React 18、TypeScript、Vite、React Router、Tailwind CSS
+- **AI 接入**
+  - OpenAI 兼容接口，当前已覆盖硅基流动、MiniMax 等兼容服务
+- **部署**
+  - Docker Compose + Nginx 反向代理
 
-## Docker 一键部署（推荐）
+## 快速开始
 
-### 1. 配置环境变量
+### Docker 部署
 
-在项目根目录创建 `.env`（供 `docker compose` 读取）：
+推荐先看部署文档：[docs/deploy.md](docs/deploy.md)
+
+最短路径：
 
 ```bash
 cat > .env <<'EOF'
@@ -74,199 +61,50 @@ SILICONFLOW_API_KEY=
 AI_BASE_URL=https://api.siliconflow.cn/v1
 AI_MODEL=Qwen/Qwen2.5-7B-Instruct
 EOF
-```
 
-### 2. 启动服务
-
-```bash
 docker compose up -d --build
 ```
 
-后端启动时会自动执行 `alembic upgrade head` 迁移。
+启动后可访问：
 
-### 3. 验证
+- 前端: `http://localhost:5173`
+- 后端 API: `http://localhost:8000`
+- OpenAPI 文档: `http://localhost:8000/docs`
 
-```bash
-docker compose ps
-curl http://localhost:8000/health
-curl http://localhost:5173/api/interests/tags
-curl "http://localhost:8000/api/now?limit=5"
-```
-
-健康接口期望返回：
-
-```json
-{"status":"healthy","database":"up"}
-```
-
-前端经由 nginx 反向代理同源访问后端 API，因此 `http://localhost:5173/api/*` 也应返回 JSON，而不是 `index.html`。
-
-### 4. 访问
-
-- 前端: http://localhost:5173
-- 后端 API: http://localhost:8000
-- API 文档: http://localhost:8000/docs
-- 前端主入口:
-  - http://localhost:5173/daily-digest
-  - http://localhost:5173/now
-
-
-### 5. 数据持久化
-
-PostgreSQL 数据保存在 Docker 命名卷 `postgres-data`（不是 `./data` 目录）。
-
-## 快速开始
-
-### 1. 克隆并安装依赖
+### 本地开发
 
 ```bash
-cd backend
-pip install -r requirements.txt
-
-cd ../frontend
-npm install
-```
-
-### 2. 配置环境变量
-
-```bash
-cd backend
-cp .env.example .env
-# 编辑 .env，填入数据库和 API 配置
-```
-
-### 3. 启动服务
-
-```bash
-# 终端 0: 启动 PostgreSQL（本地开发建议）
+# 终端 1
 docker compose up -d postgres
 
-# 终端 1: 启动后端
+# 终端 2
 cd backend
-source .venv/bin/activate
+pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 
-# 终端 2: 启动前端
+# 终端 3
 cd frontend
+npm install
 npm run dev
 ```
 
-### 4. 访问
+## 开发文档
 
-- 前端: http://localhost:5173
-- 后端 API: http://localhost:8000
-- API 文档: http://localhost:8000/docs
+- 部署说明：[docs/deploy.md](docs/deploy.md)
+- 开发进度与计划回溯：[docs/development-history.md](docs/development-history.md)
+- Superpowers 文档索引与时间线：[docs/superpowers/README.md](docs/superpowers/README.md)
 
-## 配置说明
-
-### AI API 配置
-
-在「设置 → AI 配置」页面配置：
-
-| 供应商 | 端点 | 推荐模型 |
-|--------|------|----------|
-| 硅基流动 | https://api.siliconflow.cn/v1 | Qwen/Qwen2.5-7B-Instruct |
-| MiniMax | https://api.minimax.chat/v1 | MiniMax-Text-01 |
-
-### 信息源管理
-
-1. 进入「新闻源」页面
-2. 点击「添加新闻源」
-3. 选择类型（`Native RSS` / `RSSHub` / `We-MP-RSS`）
-4. 填写完整 feed URL 并保存
-5. 系统将统一拉取 feed 中的文章并入库
+README 保持面向开源项目访客的产品说明；阶段性进展、计划和执行记录统一沉淀到 `docs/`。
 
 ## 项目结构
 
+```text
+mindflow/
+├── backend/    # FastAPI API、调度器、数据模型、迁移、测试
+├── frontend/   # React + Vite 前端应用
+├── docs/       # 部署说明、开发回溯、设计与计划文档
+└── data/       # 历史数据或迁移辅助文件
 ```
-ai-crawler/
-├── backend/
-│   ├── main.py              # FastAPI 入口
-│   ├── database.py          # PostgreSQL / SQLAlchemy 异步数据访问
-│   ├── models.py            # SQLAlchemy ORM 模型
-│   ├── schemas.py           # Pydantic 数据模型
-│   ├── alembic/             # 数据库迁移版本管理
-│   ├── routers/             # API 路由
-│   │   ├── articles.py      # 文章管理
-│   │   ├── sources.py        # 信息源管理
-│   │   ├── digests.py       # 简报生成
-│   │   ├── now.py           # Now 工作台
-│   │   ├── interests.py     # 兴趣标签
-│   │   ├── behavior.py      # 行为日志
-│   │   └── config.py        # 系统配置
-│   ├── services/
-│   │   ├── ai.py            # AI 调用服务
-│   │   ├── crawler.py       # 爬虫服务
-│   │   ├── now.py           # Now 排序/详情/状态服务
-│   │   ├── scheduler.py      # 定时任务
-│   │   └── learning.py       # 权重学习算法
-│   └── tests/               # 后端测试
-│       ├── test_articles.py
-│       ├── test_config.py
-│       ├── test_database.py
-│       ├── test_digests.py
-│       ├── test_full_flow.py
-│       ├── test_main.py
-│       └── test_sources.py
-├── frontend/
-│   └── src/
-│       ├── pages/            # 页面组件
-│       │   ├── Newsletter.tsx      # Daily Digest
-│       │   ├── Now.tsx             # Now 工作台
-│       │   ├── Sources.tsx         # 新闻源管理
-│       │   ├── Settings.tsx        # 系统设置
-│       │   └── InterestSettings.tsx  # 兴趣设置
-│       ├── components/       # 通用组件
-│       │   ├── InsightCard.tsx     # 洞察卡片
-│       │   └── InterestTagItem.tsx # 兴趣标签项
-│       │   └── now/                # Now 工作台组件
-│       ├── hooks/
-│       │   └── useBehaviorCollector.ts  # 行为收集
-│       └── api/
-│           └── newsletter.ts  # API 客户端
-├── data/                     # 历史 SQLite 数据（迁移用，可选）
-└── docs/                     # 设计文档和规格
-```
-
-## 开发
-
-### 运行测试
-
-```bash
-docker start mindflow-postgres || true
-
-cd backend
-source .venv/bin/activate
-POSTGRES_PASSWORD=mindflow_dev alembic upgrade head
-POSTGRES_PASSWORD=mindflow_dev pytest tests/test_now_api.py tests/test_articles.py tests/test_digests.py tests/test_main.py tests/test_sources.py tests/test_config.py tests/test_full_flow.py -q
-```
-
-说明：
-- `tests/test_database.py` 目前依赖 `pytest_asyncio`；如果本地环境未安装该包，该文件不会作为默认验证集合的一部分。
-
-### 构建前端
-
-```bash
-cd frontend
-npm run build
-```
-
-### Docker 联调快速检查
-
-```bash
-docker compose up -d --build
-curl http://127.0.0.1:8000/health
-curl http://127.0.0.1:5173/api/interests/tags
-curl "http://127.0.0.1:8000/api/now?limit=5"
-```
-
-## 致谢
-
-本项目基于 [wechat-article-exporter](https://github.com/wechat-article/wechat-article-exporter) 提供的公网接口服务进行二次封装，感谢原作者的贡献。
-
-## 免责声明
-
-本项目仅供学习交流使用，请勿用于任何商业目的。如需商业使用，请联系作者获得授权。
 
 ## License
 
