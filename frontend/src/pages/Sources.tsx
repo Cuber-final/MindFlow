@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 
-import { sourcesApi, type NewsSource } from '../api/newsletter';
+import { sourcesApi, type NewsSource, type WeMpRssAuthConfig } from '../api/newsletter';
 import { useI18n } from '../i18n';
 
 type FetchModalStatus = 'loading' | 'success' | 'error';
-type SourceType = 'native_rss' | 'rsshub' | 'we_mp_rss';
+type SourceType = 'native_rss' | 'we_mp_rss';
 
 interface FetchFeedbackState {
   open: boolean;
@@ -16,10 +16,20 @@ interface FetchFeedbackState {
   articlesAdded: number;
 }
 
-const SUPPORTED_SOURCE_TYPES: SourceType[] = ['native_rss', 'rsshub', 'we_mp_rss'];
+const SUPPORTED_SOURCE_TYPES: SourceType[] = ['native_rss', 'we_mp_rss'];
+const MASKED_PASSWORD_PLACEHOLDER = '••••••••';
 
 function isSupportedSourceType(value: string | null | undefined): value is SourceType {
   return SUPPORTED_SOURCE_TYPES.includes((value ?? '') as SourceType);
+}
+
+function normalizeFrontendSourceType(value: string | null | undefined): SourceType {
+  return value === 'we_mp_rss' ? 'we_mp_rss' : 'native_rss';
+}
+
+function getWeMpRssAuth(config: Record<string, unknown> | null | undefined): WeMpRssAuthConfig | null {
+  const auth = config?.we_mprss_auth;
+  return auth && typeof auth === 'object' ? (auth as WeMpRssAuthConfig) : null;
 }
 
 function inferQuickAddName(feedUrl: string) {
@@ -32,9 +42,8 @@ function inferQuickAddName(feedUrl: string) {
 }
 
 function sourceTypeLabel(sourceType: string, isZh: boolean) {
-  if (sourceType === 'native_rss') return isZh ? '原生 RSS' : 'Native RSS';
-  if (sourceType === 'rsshub') return 'RSSHub';
-  if (sourceType === 'we_mp_rss') return 'We-MP-RSS';
+  if (sourceType === 'we_mp_rss') return isZh ? '微信公众号' : 'We-MP-RSS';
+  if (sourceType === 'native_rss' || sourceType === 'rsshub') return isZh ? '通用 RSS' : 'Generic RSS';
   return sourceType;
 }
 
@@ -50,9 +59,9 @@ export default function Sources() {
     nativeHints: isZh
       ? ['请确认该源返回 RSS / Atom / JSON Feed', '请确认目标站点没有拦截服务端请求']
       : ['Please verify the source returns RSS / Atom / JSON Feed', 'Please verify the site does not block server-side requests'],
-    rsshubHints: isZh
-      ? ['请确认 RSSHub 实例与 route 都可访问', '优先使用默认 XML 输出，必要时再切换 atom/json']
-      : ['Please verify both the RSSHub instance and route are reachable', 'Prefer the default XML output unless you need atom/json'],
+    genericHints: isZh
+      ? ['请确认该源返回 RSS / Atom / JSON Feed', 'RSSHub 等 feed 地址也按通用 RSS 录入']
+      : ['Please verify the source returns RSS / Atom / JSON Feed', 'RSSHub routes should also be entered as Generic RSS feeds'],
     weMpRssHints: isZh
       ? ['请确认 we-mp-rss 服务和对应 /feed/... 路径可访问', '请确认本地部署生成的 feed 已有文章数据']
       : ['Please verify the we-mp-rss service and /feed/... endpoint are reachable', 'Please verify the local deployment already has article data'],
@@ -85,8 +94,8 @@ export default function Sources() {
     actionRequired: isZh ? '需要处理' : 'Action required',
     noActiveSignals: isZh ? '暂无活跃信号' : 'No Active Signals',
     noActiveSignalsHint: isZh
-      ? '当前只保留 feed 形态的输入源。连接 RSSHub、we-mp-rss 或原生 RSS 后，系统将开始抓取与整理。'
-      : 'Only feed-shaped sources remain here. Connect RSSHub, we-mp-rss, or a native RSS feed to start ingestion.',
+      ? '当前只保留两类输入源：通用 RSS 和微信公众号。连接 feed 后，系统将开始抓取与整理。'
+      : 'Only two source families remain here: Generic RSS and We-MP-RSS. Connect a feed and MindFlow will start ingestion.',
     startConnection: isZh ? '开始连接' : 'Start Connection',
     sourceIdentity: isZh ? '来源标识' : 'Source Identity',
     type: isZh ? '类型' : 'Type',
@@ -101,12 +110,13 @@ export default function Sources() {
     deleteSource: isZh ? '删除来源' : 'Delete Source',
     ingestSignal: isZh ? '接入新信号' : 'Ingest New Signal',
     ingestHint: isZh
-      ? '快速添加会默认创建原生 RSS 源；需要区分 RSSHub 或 we-mp-rss 时，请使用上方的新增按钮。'
-      : 'Quick add creates a Native RSS source by default. Use the modal if you want to mark the source as RSSHub or we-mp-rss.',
+      ? '快速添加会默认创建通用 RSS 源；如果是微信公众号 feed，请使用上方弹窗补充认证信息。'
+      : 'Quick Add creates a Generic RSS source by default. Use the modal for We-MP-RSS feeds that need credentials.',
     quickAddPlaceholder: isZh ? '粘贴 Feed URL，例如 https://example.com/feed.xml' : 'Paste a feed URL, e.g. https://example.com/feed.xml',
     parsing: isZh ? '添加中...' : 'Adding...',
     add: isZh ? '快速添加 RSS' : 'Quick Add RSS',
     suggestions: isZh ? '建议类型' : 'Suggested Types',
+    authConfigured: isZh ? '已配置认证' : 'Auth configured',
   };
 
   const [sources, setSources] = useState<NewsSource[]>([]);
@@ -133,11 +143,10 @@ export default function Sources() {
 
   const sourceHints = useMemo(
     () => ({
-      native_rss: text.nativeHints,
-      rsshub: text.rsshubHints,
+      native_rss: text.genericHints,
       we_mp_rss: text.weMpRssHints,
     }),
-    [text.nativeHints, text.rsshubHints, text.weMpRssHints]
+    [text.genericHints, text.weMpRssHints]
   );
 
   const loadSources = async () => {
@@ -203,7 +212,7 @@ export default function Sources() {
     if (isSupportedSourceType(source.source_type)) {
       return sourceHints[source.source_type];
     }
-    return text.nativeHints;
+    return text.genericHints;
   };
 
   const showFetchStatusModal = ({
@@ -582,9 +591,8 @@ export default function Sources() {
           {quickAddError && <p className="mt-2 text-sm text-red-600">{quickAddError}</p>}
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="mr-2 self-center font-['Manrope'] text-[10px] uppercase tracking-wider text-[#71787c]">{text.suggestions}:</span>
-            <span className="rounded-full border border-[#c0c8cb]/10 bg-[#f4f4f2] px-3 py-1 text-[10px] text-[#5e5e5e]">Native RSS</span>
-            <span className="rounded-full border border-[#c0c8cb]/10 bg-[#f4f4f2] px-3 py-1 text-[10px] text-[#5e5e5e]">RSSHub</span>
-            <span className="rounded-full border border-[#c0c8cb]/10 bg-[#f4f4f2] px-3 py-1 text-[10px] text-[#5e5e5e]">We-MP-RSS</span>
+            <span className="rounded-full border border-[#c0c8cb]/10 bg-[#f4f4f2] px-3 py-1 text-[10px] text-[#5e5e5e]">{isZh ? '通用 RSS' : 'Generic RSS'}</span>
+            <span className="rounded-full border border-[#c0c8cb]/10 bg-[#f4f4f2] px-3 py-1 text-[10px] text-[#5e5e5e]">{isZh ? '微信公众号' : 'We-MP-RSS'}</span>
           </div>
         </div>
       </div>
@@ -623,35 +631,123 @@ interface SourceModalProps {
 function SourceModal({ source, onClose, onSave }: SourceModalProps) {
   const { locale } = useI18n();
   const isZh = locale === 'zh-CN';
-  const initialType = isSupportedSourceType(source?.source_type) ? source.source_type : 'native_rss';
+  const existingConfig = (source?.config ?? {}) as Record<string, unknown>;
+  const existingAuth = getWeMpRssAuth(existingConfig);
+  const existingPassword = existingAuth?.password ?? '';
+  const initialType = normalizeFrontendSourceType(source?.source_type);
   const [name, setName] = useState(source?.name || '');
   const [sourceType, setSourceType] = useState<SourceType>(initialType);
   const [apiBaseUrl, setApiBaseUrl] = useState(source?.api_base_url || '');
+  const [authUsername, setAuthUsername] = useState(existingAuth?.username ?? '');
+  const [authPassword, setAuthPassword] = useState(existingPassword ? MASKED_PASSWORD_PLACEHOLDER : '');
+  const [authPasswordDirty, setAuthPasswordDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const helperText =
     sourceType === 'native_rss'
       ? isZh
-        ? '直接填写标准 RSS / Atom / JSON Feed 地址。'
-        : 'Paste a standard RSS / Atom / JSON Feed URL.'
-      : sourceType === 'rsshub'
-        ? isZh
-          ? '填写完整的 RSSHub route 地址，例如 https://rsshub.app/github/trending/daily'
-          : 'Paste the full RSSHub route URL, e.g. https://rsshub.app/github/trending/daily'
-        : isZh
-          ? '填写 we-mp-rss 生成的 feed 地址，例如 http://127.0.0.1:8001/feed/1.xml'
-          : 'Paste the feed generated by we-mp-rss, e.g. http://127.0.0.1:8001/feed/1.xml';
+        ? '填写任意标准 RSS / Atom / JSON Feed 地址，RSSHub 也按通用 RSS 录入。'
+        : 'Paste any standard RSS / Atom / JSON Feed URL. RSSHub routes are also entered as Generic RSS feeds.'
+      : isZh
+        ? '填写 we-mp-rss 生成的 feed 地址，并补充该服务的登录用户名与密码。'
+        : 'Paste the feed generated by we-mp-rss and provide the service username/password.';
+
+  const authHelperText = isZh
+    ? '保存后用户名会直接显示，密码会以遮盖形式显示；不修改密码时会保留原值。'
+    : 'After save, the username remains visible while the password stays masked. If you leave it unchanged, the existing password is preserved.';
+
+  const nextPassword =
+    source && !authPasswordDirty
+      ? existingPassword
+      : authPassword;
+
+  const credentialsChanged =
+    sourceType === 'we_mp_rss' && (
+      authUsername.trim() !== (existingAuth?.username ?? '').trim()
+      || nextPassword !== existingPassword
+    );
+
+  const handlePasswordChange = (value: string) => {
+    if (!authPasswordDirty) {
+      setAuthPasswordDirty(true);
+      if (value === MASKED_PASSWORD_PLACEHOLDER) {
+        setAuthPassword('');
+        return;
+      }
+    }
+    setAuthPassword(value);
+  };
+
+  const buildConfig = () => {
+    const config: Record<string, unknown> = { feed_url: apiBaseUrl };
+
+    if (sourceType === 'we_mp_rss') {
+      const nextAuth: WeMpRssAuthConfig = {
+        ...existingAuth,
+        username: authUsername.trim(),
+        password: nextPassword,
+      };
+
+      if (credentialsChanged) {
+        delete nextAuth.access_token;
+        delete nextAuth.refresh_token;
+        delete nextAuth.token_updated_at;
+        delete nextAuth.verified_at;
+        delete nextAuth.last_auth_error;
+      }
+
+      config.we_mprss_auth = nextAuth;
+    }
+
+    return config;
+  };
+
+  const buildAuthKey = () => {
+    if (sourceType !== 'we_mp_rss') {
+      return source?.source_type === 'we_mp_rss' ? '' : (source?.auth_key || '');
+    }
+    if (!source) {
+      return '';
+    }
+    return credentialsChanged ? '' : (source.auth_key || '');
+  };
+
+  const validateWeMpRssAuth = () => {
+    if (sourceType !== 'we_mp_rss') {
+      return null;
+    }
+    if (!authUsername.trim()) {
+      return isZh ? '请输入 we-mp-rss 用户名' : 'Please enter the We-MP-RSS username';
+    }
+    if (!nextPassword.trim()) {
+      return isZh ? '请输入 we-mp-rss 密码' : 'Please enter the We-MP-RSS password';
+    }
+    return null;
+  };
+
+  const validationError = validateWeMpRssAuth();
+
+  const sourceTypeOptions: Array<{ value: SourceType; label: string }> = [
+    { value: 'native_rss', label: isZh ? '通用 RSS' : 'Generic RSS' },
+    { value: 'we_mp_rss', label: isZh ? '微信公众号' : 'We-MP-RSS' },
+  ];
+
+  const authConfigured = Boolean(existingAuth?.username && existingPassword);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
     setSaving(true);
     try {
       const data = {
         name,
         source_type: sourceType,
         api_base_url: apiBaseUrl,
-        auth_key: '',
-        config: { feed_url: apiBaseUrl },
+        auth_key: buildAuthKey(),
+        config: buildConfig(),
       };
       if (source) {
         await sourcesApi.update(source.id, data);
@@ -698,9 +794,11 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
               onChange={(event) => setSourceType(event.target.value as SourceType)}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0d4656]"
             >
-              <option value="native_rss">{isZh ? '原生 RSS' : 'Native RSS'}</option>
-              <option value="rsshub">RSSHub</option>
-              <option value="we_mp_rss">We-MP-RSS</option>
+              {sourceTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -715,6 +813,36 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
             />
             <p className="mt-1 text-xs text-gray-500">{helperText}</p>
           </div>
+          {sourceType === 'we_mp_rss' && (
+            <>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">{isZh ? '用户名' : 'Username'}</label>
+                <input
+                  type="text"
+                  value={authUsername}
+                  onChange={(event) => setAuthUsername(event.target.value)}
+                  required
+                  placeholder={isZh ? '例如：admin' : 'e.g. admin'}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0d4656]"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">{isZh ? '密码' : 'Password'}</label>
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={(event) => handlePasswordChange(event.target.value)}
+                  required
+                  placeholder={isZh ? '输入 we-mp-rss 密码' : 'Enter the We-MP-RSS password'}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0d4656]"
+                />
+                <p className="mt-1 text-xs text-gray-500">{authHelperText}</p>
+                {authConfigured && !authPasswordDirty && (
+                  <p className="mt-1 text-xs font-medium text-[#0d4656]">{isZh ? '已配置认证' : 'Auth configured'}</p>
+                )}
+              </div>
+            </>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"

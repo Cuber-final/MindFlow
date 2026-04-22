@@ -58,6 +58,16 @@ export interface NewsSource {
   article_count: number;
 }
 
+export interface WeMpRssAuthConfig {
+  username?: string;
+  password?: string;
+  access_token?: string;
+  refresh_token?: string;
+  token_updated_at?: string;
+  verified_at?: string;
+  last_auth_error?: string;
+}
+
 export interface AIConfig {
   provider: string;
   base_url: string;
