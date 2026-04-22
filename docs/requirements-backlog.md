@@ -38,6 +38,21 @@
 
 ## 当前需求池
 
+### 当前建议开发顺序（`2026-04-23` refresh）
+
+1. `REQ-OPS-002` + `REQ-DATA-002` + `REQ-DATA-003`
+2. `REQ-OPS-004`
+3. `REQ-FLOW-001` + `REQ-FLOW-002` + `REQ-FLOW-004`
+4. `REQ-OPS-003`
+5. `REQ-DATA-001` + `REQ-SRC-003`
+6. `REQ-SRC-001` + `REQ-UX-001` + `REQ-SRC-002`
+7. `REQ-AI-001` ~ `REQ-AI-004`
+
+说明：
+
+- `REQ-OPS-001` 已完成并验证，因此从“下一步开发优先级”中移出
+- 当前排序以“先补可观测性和调度闭环，再接前端设置与检索闭环，最后扩治理与 AI 增强”为原则
+
 ### 已录入的交互与 Source 体验需求
 
 | ID | 分类 | 优先级 | 状态 | 需求 | 备注 | 关联计划 |
@@ -56,10 +71,10 @@
 
 | ID | 分类 | 优先级 | 状态 | 需求 | 备注 | 关联计划 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `REQ-OPS-001` | `OPS` | P1 | `planned` | 修通并验证 `定时抓取 -> 锚点提取 -> Digest 生成` 的后台任务链路 | 对应 plan-draft Rank 1，优先解决调度链路不稳定问题 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-OPS-002` | `OPS` | P1 | `planned` | 为后台任务补齐执行状态、结果与失败原因的可观测能力 | 任务需要可追踪、可定位失败，不再只停留在后台执行 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
-| `REQ-OPS-003` | `OPS` | P1 | `planned` | 增加任务 / 日志页，面向用户或操作者展示任务运行记录 | 当前 MVP 缺少任务页与日志页闭环 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-OPS-004` | `OPS` | P1 | `planned` | 把刷新频率设置从已有 API 接到前端设置页 | 后端已有 schedule API，但 UI 尚未接入 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
+| `REQ-OPS-003` | `OPS` | P2 | `planned` | 增加任务 / 日志页，面向用户或操作者展示任务运行记录 | 仍然重要，但应放在 `REQ-OPS-002` 把任务状态与失败信息打通之后 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
+| `REQ-OPS-001` | `OPS` | P1 | `done` | 修通并验证 `定时抓取 -> 锚点提取 -> Digest 生成` 的后台任务链路 | 已由 `we-mp-rss` 闭环补齐与本地验证完成，见 2026-04-22 progress 记录 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 
 #### 检索与内容输出能力
 
@@ -67,16 +82,16 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | `REQ-FLOW-001` | `FLOW` | P1 | `planned` | 补齐文章搜索能力 | 顶部搜索框目前未接线 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-FLOW-002` | `FLOW` | P1 | `planned` | 支持时间、来源、标签、状态等多维筛选 | 当前文章列表过滤能力明显不足 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
+| `REQ-FLOW-004` | `FLOW` | P1 | `planned` | 为搜索 / 筛选结果补齐可消费的阅读入口与结果闭环 | 应与搜索 / 筛选同一波次推进，避免只做“能查不能读”的半闭环 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-FLOW-003` | `FLOW` | P2 | `planned` | 增加导出能力 | 属于 PRD 范围内的内容输出能力，但优先级低于检索与筛选闭环 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
-| `REQ-FLOW-004` | `FLOW` | P1 | `planned` | 为搜索 / 筛选结果补齐可消费的阅读入口与结果闭环 | 搜索与筛选不能只停留在列表，需要接上现有阅读工作流 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 
 #### 平台化数据模型与治理
 
 | ID | 分类 | 优先级 | 状态 | 需求 | 备注 | 关联计划 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `REQ-DATA-001` | `DATA` | P1 | `planned` | 扩充 Source 数据模型，补齐 `enabled / category / tags / refresh_interval / last_error` 等治理字段 | 当前 Source 模型还不足以支撑平台化管理 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-DATA-002` | `DATA` | P1 | `planned` | 扩充 Entry / Job 的状态字段与管理语义 | 为任务追踪、检索和治理能力提供底层模型支撑 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-DATA-003` | `DATA` | P1 | `planned` | 同步扩展前后端 API 契约，使治理字段与状态模型可被前端消费 | 避免模型扩展后前后端继续脱节 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
+| `REQ-DATA-001` | `DATA` | P2 | `planned` | 扩充 Source 数据模型，补齐 `enabled / category / tags / refresh_interval / last_error` 等治理字段 | 当前仍有价值，但优先级低于任务状态 / 契约扩展这一轮基础治理工作 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-SRC-003` | `SRC` | P2 | `planned` | 在 Sources 管理页展示并编辑新增的治理字段 | 数据模型扩展后，Source 管理页需要具备相应操作入口 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 
 #### 决策型需求
