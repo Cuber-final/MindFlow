@@ -71,7 +71,7 @@
 
 | ID | 分类 | 优先级 | 状态 | 需求 | 备注 | 关联计划 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `REQ-OPS-002` | `OPS` | P1 | `planned` | 为后台任务补齐执行状态、结果与失败原因的可观测能力 | 任务需要可追踪、可定位失败，不再只停留在后台执行 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
+| `REQ-OPS-002` | `OPS` | P1 | `planned` | 为后台任务补齐执行状态、结果与失败原因的可观测能力 | 当前已完成 `we_mp_rss` provider-driven sync 与正文回填数据基础，但独立 Job 可观测模型和运行结果摘要尚未补齐 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-OPS-004` | `OPS` | P1 | `planned` | 把刷新频率设置从已有 API 接到前端设置页 | 后端已有 schedule API，但 UI 尚未接入 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-OPS-003` | `OPS` | P2 | `planned` | 增加任务 / 日志页，面向用户或操作者展示任务运行记录 | 仍然重要，但应放在 `REQ-OPS-002` 把任务状态与失败信息打通之后 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-OPS-001` | `OPS` | P1 | `done` | 修通并验证 `定时抓取 -> 锚点提取 -> Digest 生成` 的后台任务链路 | 已由 `we-mp-rss` 闭环补齐与本地验证完成，见 2026-04-22 progress 记录 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
@@ -89,8 +89,8 @@
 
 | ID | 分类 | 优先级 | 状态 | 需求 | 备注 | 关联计划 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `REQ-DATA-002` | `DATA` | P1 | `planned` | 扩充 Entry / Job 的状态字段与管理语义 | 为任务追踪、检索和治理能力提供底层模型支撑 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
-| `REQ-DATA-003` | `DATA` | P1 | `planned` | 同步扩展前后端 API 契约，使治理字段与状态模型可被前端消费 | 避免模型扩展后前后端继续脱节 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
+| `REQ-DATA-002` | `DATA` | P1 | `in_progress` | 扩充 Entry / Job 的状态字段与管理语义 | 已新增 `provider_source_id / provider_article_id` 并收敛 `we_mp_rss` 正文状态语义，但 Job 级状态模型仍待补齐 | [2026-04-23-we-mprss-provider-sync.md](superpowers/plans/2026-04-23-we-mprss-provider-sync.md) |
+| `REQ-DATA-003` | `DATA` | P1 | `in_progress` | 同步扩展前后端 API 契约，使治理字段与状态模型可被前端消费 | 后端 Source / Article 契约已补出 provider id 字段，前端消费与更多治理字段仍待继续接线 | [2026-04-23-we-mprss-provider-sync.md](superpowers/plans/2026-04-23-we-mprss-provider-sync.md) |
 | `REQ-DATA-001` | `DATA` | P2 | `planned` | 扩充 Source 数据模型，补齐 `enabled / category / tags / refresh_interval / last_error` 等治理字段 | 当前仍有价值，但优先级低于任务状态 / 契约扩展这一轮基础治理工作 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-SRC-003` | `SRC` | P2 | `planned` | 在 Sources 管理页展示并编辑新增的治理字段 | 数据模型扩展后，Source 管理页需要具备相应操作入口 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 
