@@ -13,15 +13,24 @@ from database import (
     add_fetch_log,
     create_article,
     get_article_by_external_id,
+    get_article_by_provider_article_id,
     get_source_by_id,
+    update_article_content_refresh,
+    update_source,
     update_source_auth_state,
     update_source_fetch_time,
 )
 from services.we_mprss import (
     WE_MPRSS_SOURCE_TYPE,
     ensure_source_auth_state,
-    normalize_feed_url_for_discovery,
+    fetch_latest_articles_by_mp_id,
+    filter_today_articles,
+    html_to_text,
+    needs_content_backfill,
+    parse_provider_source_id_from_feed_url,
     rewrite_local_service_url_for_runtime,
+    trigger_article_refresh,
+    trigger_mp_refresh,
 )
 
 DEFAULT_TIMEOUT = 30
@@ -385,20 +394,107 @@ async def fetch_source_articles(source_id: int) -> Tuple[int, str]:
     source_config = _coerce_source_config(source.get("config"))
 
     try:
-        feed_url = _resolve_feed_url(source, source_config)
         if source_type == WE_MPRSS_SOURCE_TYPE:
-            feed_url = normalize_feed_url_for_discovery(feed_url)
-            feed_url = rewrite_local_service_url_for_runtime(feed_url)
             auth_state = await _maybe_await(ensure_source_auth_state(source))
             source = auth_state.get("source") or source
-            if auth_state.get("changed"):
+
+            feed_url = _resolve_feed_url(source, source_config)
+            feed_url = rewrite_local_service_url_for_runtime(feed_url)
+            provider_source_id = _clean_text(source.get("provider_source_id"))
+            if not provider_source_id:
+                provider_source_id = parse_provider_source_id_from_feed_url(feed_url)
+
+            if auth_state.get("changed") or provider_source_id != _clean_text(source.get("provider_source_id")):
                 await _maybe_await(
-                    update_source_auth_state(
+                    update_source(
                         source_id,
                         auth_key=source.get("auth_key") or "",
                         config=source.get("config") or {},
+                        provider_source_id=provider_source_id,
                     )
                 )
+            source["provider_source_id"] = provider_source_id
+
+            await trigger_mp_refresh(source, provider_source_id)
+            latest_articles = await fetch_latest_articles_by_mp_id(
+                source,
+                provider_source_id,
+                latest_limit=10,
+            )
+            today_articles = filter_today_articles(latest_articles)
+            added_count = 0
+            source_name = _clean_text(source.get("name")) or "未知来源"
+
+            for provider_article in today_articles:
+                provider_article_id = _clean_text(provider_article.get("id"))
+                if not provider_article_id:
+                    continue
+
+                existing = await _maybe_await(get_article_by_provider_article_id(source_id, provider_article_id))
+                title = _clean_text(provider_article.get("title")) or "无标题"
+                link = _clean_text(provider_article.get("url")) or feed_url
+                raw_html = _clean_text(provider_article.get("content_html"))
+                raw_content = _clean_text(provider_article.get("content"))
+                published_at = None
+                publish_time = provider_article.get("publish_time")
+                if publish_time not in (None, ""):
+                    try:
+                        published_at = datetime.fromtimestamp(int(publish_time), tz=timezone.utc).replace(tzinfo=None)
+                    except (TypeError, ValueError, OSError):
+                        published_at = None
+
+                backfill_needed = needs_content_backfill(provider_article)
+                content_refresh_status = "detail_fetched"
+                content_refresh_task_id = None
+                content_refresh_requested_at = None
+                content_refresh_error = None
+
+                if backfill_needed:
+                    refresh_result = await trigger_article_refresh(source, provider_article_id)
+                    content_refresh_task_id = _clean_text(refresh_result.get("task_id")) or None
+                    content_refresh_requested_at = datetime.utcnow()
+                    refresh_status = _clean_text(refresh_result.get("status")).lower()
+                    content_refresh_status = "refresh_requested"
+                    if refresh_status == "running":
+                        content_refresh_status = "refresh_running"
+                content = html_to_text(raw_html or raw_content) or raw_content or title
+
+                if existing:
+                    if backfill_needed:
+                        await _maybe_await(
+                            update_article_content_refresh(
+                                existing["id"],
+                                content_refresh_status=content_refresh_status,
+                                content_refresh_task_id=content_refresh_task_id,
+                                content_refresh_requested_at=content_refresh_requested_at,
+                                content_refresh_error=content_refresh_error,
+                            )
+                        )
+                    continue
+
+                create_payload = {
+                    "source_id": source_id,
+                    "title": title,
+                    "external_id": provider_article_id,
+                    "provider_article_id": provider_article_id,
+                    "link": link,
+                    "content": content if not backfill_needed else title,
+                    "content_html": raw_html if not backfill_needed else "",
+                    "content_refresh_status": content_refresh_status,
+                    "content_refresh_task_id": content_refresh_task_id,
+                    "content_refresh_requested_at": content_refresh_requested_at,
+                    "content_refresh_error": content_refresh_error,
+                    "author": _clean_text(provider_article.get("author")) or source_name,
+                    "published_at": published_at,
+                }
+                await _maybe_await(create_article(**create_payload))
+                added_count += 1
+
+            await _maybe_await(update_source_fetch_time(source_id, len(today_articles)))
+            await _maybe_await(add_fetch_log(source_id, "success", f"成功抓取 {added_count} 篇新文章"))
+            return added_count, "抓取成功"
+
+        feed_url = _resolve_feed_url(source, source_config)
         payload, content_type = await fetch_feed_document(feed_url, source.get("auth_key") or "")
         feed_meta, entries = parse_feed_document(payload, content_type)
 

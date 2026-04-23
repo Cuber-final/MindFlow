@@ -11,6 +11,7 @@ class NewsSource(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     source_type = Column(String, default="native_rss")
+    provider_source_id = Column(String)
     api_base_url = Column(String, nullable=False)
     auth_key = Column(String, default="")
     config = Column(JSON, default=dict)
@@ -25,6 +26,7 @@ class Article(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     source_id = Column(Integer, ForeignKey("news_sources.id", ondelete="CASCADE"))
     external_id = Column(String, default="")
+    provider_article_id = Column(String)
     title = Column(String, nullable=False)
     link = Column(String, default="")
     content = Column(Text, default="")
@@ -42,6 +44,10 @@ class Article(Base):
     read_at = Column(DateTime)
     processed_at = Column(DateTime)
     last_opened_at = Column(DateTime)
+
+    __table_args__ = (
+        Index("idx_articles_source_provider_article", "source_id", "provider_article_id", unique=True),
+    )
 
 
 class AnchorPoint(Base):

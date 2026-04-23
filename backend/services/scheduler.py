@@ -66,6 +66,7 @@ async def process_pending_we_mp_rss_articles() -> int:
         }
         article = {
             "id": row.get("article_id"),
+            "provider_article_id": row.get("provider_article_id"),
             "external_id": row.get("external_id"),
             "content_refresh_status": row.get("content_refresh_status"),
         }

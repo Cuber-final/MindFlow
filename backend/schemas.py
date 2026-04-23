@@ -44,6 +44,7 @@ class NewsSourceResponse(BaseModel):
     id: int
     name: str
     source_type: str
+    provider_source_id: Optional[str] = None
     api_base_url: str
     auth_key: str
     config: dict
@@ -58,6 +59,7 @@ class ArticleResponse(BaseModel):
     id: int
     source_id: int
     external_id: str
+    provider_article_id: Optional[str] = None
     title: str
     link: str
     content: str

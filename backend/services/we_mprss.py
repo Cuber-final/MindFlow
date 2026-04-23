@@ -1,4 +1,5 @@
 import asyncio
+import datetime as dt
 import html
 import json
 import os
@@ -7,6 +8,7 @@ from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, Optional
 from pathlib import Path
 from urllib.parse import ParseResult, parse_qsl, urlencode, urlparse, urlunparse
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -16,6 +18,8 @@ WE_MPRSS_FEED_PATH_RE = re.compile(r"^/feed/(?P<feed_id>[^/]+?)\.(?P<ext>rss|xml
 WE_MPRSS_AUTH_CONFIG_KEY = "we_mprss_auth"
 DEFAULT_REFRESH_TIMEOUT_SECONDS = 30
 DOCKER_LOOPBACK_ALIAS = "host.docker.internal"
+DEFAULT_PROVIDER_LATEST_LIMIT = 10
+DEFAULT_PROVIDER_TIMEZONE = "Asia/Shanghai"
 
 
 def is_we_mprss_feed_url(raw_url: str) -> bool:
@@ -41,6 +45,17 @@ def normalize_feed_url_for_discovery(raw_url: str) -> str:
         fragment=parsed.fragment,
     )
     return urlunparse(normalized)
+
+
+def parse_provider_source_id_from_feed_url(raw_url: str) -> str:
+    parsed = urlparse(raw_url)
+    match = WE_MPRSS_FEED_PATH_RE.match(parsed.path)
+    if not match:
+        raise ValueError("rss_url 不是受支持的 /feed/{feed_id}.ext 格式")
+    feed_id = (match.group("feed_id") or "").strip()
+    if not feed_id:
+        raise ValueError("rss_url 中未解析到 provider_source_id")
+    return feed_id
 
 
 def running_inside_docker() -> bool:
@@ -290,11 +305,12 @@ async def _request_json(
     url: str,
     *,
     auth_key: str = "",
+    params: Optional[Dict[str, Any]] = None,
     timeout_seconds: int = DEFAULT_REFRESH_TIMEOUT_SECONDS,
 ) -> Dict[str, Any]:
     headers = build_auth_headers(auth_key)
     async with httpx.AsyncClient(timeout=timeout_seconds, follow_redirects=True) as client:
-        response = await client.request(method, url, headers=headers)
+        response = await client.request(method, url, headers=headers, params=params)
     response.raise_for_status()
     payload = response.json()
     if not isinstance(payload, dict):
@@ -443,6 +459,78 @@ async def ensure_authenticated_source(
     return ""
 
 
+async def trigger_mp_refresh(
+    source: Dict[str, Any],
+    provider_source_id: str,
+    *,
+    start_page: int = 0,
+    end_page: int = 1,
+) -> Dict[str, Any]:
+    payload = await _request_json(
+        "GET",
+        f"{get_service_base_url(source['api_base_url'])}/api/v1/wx/mps/update/{provider_source_id}",
+        auth_key=source.get("auth_key", ""),
+        params={"start_page": start_page, "end_page": end_page},
+    )
+    return payload
+
+
+async def fetch_latest_articles_by_mp_id(
+    source: Dict[str, Any],
+    provider_source_id: str,
+    *,
+    latest_limit: int = DEFAULT_PROVIDER_LATEST_LIMIT,
+) -> list[Dict[str, Any]]:
+    payload = await _request_json(
+        "GET",
+        f"{get_service_base_url(source['api_base_url'])}/api/v1/wx/articles",
+        auth_key=source.get("auth_key", ""),
+        params={
+            "mp_id": provider_source_id,
+            "limit": latest_limit,
+            "offset": 0,
+        },
+    )
+    data = payload.get("data") or payload
+    articles = data.get("list") if isinstance(data, dict) else []
+    if not isinstance(articles, list):
+        raise ValueError("we-mp-rss latest articles response missing list")
+    return [item for item in articles if isinstance(item, dict)]
+
+
+def filter_today_articles(
+    articles: list[Dict[str, Any]],
+    *,
+    now: Optional[dt.datetime] = None,
+    tz_name: str = DEFAULT_PROVIDER_TIMEZONE,
+) -> list[Dict[str, Any]]:
+    zone = ZoneInfo(tz_name)
+    current = now.astimezone(zone) if now else dt.datetime.now(zone)
+    day_start = current.replace(hour=0, minute=0, second=0, microsecond=0)
+    next_day_start = day_start + dt.timedelta(days=1)
+    day_start_ts = int(day_start.timestamp())
+    next_day_start_ts = int(next_day_start.timestamp())
+
+    result: list[Dict[str, Any]] = []
+    for article in articles:
+        try:
+            publish_time = int(article.get("publish_time") or 0)
+        except (TypeError, ValueError):
+            continue
+        if day_start_ts <= publish_time < next_day_start_ts:
+            result.append(article)
+    return result
+
+
+def needs_content_backfill(article: Dict[str, Any]) -> bool:
+    has_content = article.get("has_content")
+    if has_content in (1, True, "1", "true", "True"):
+        return False
+    content = str(article.get("content") or "").strip()
+    content_html = str(article.get("content_html") or "").strip()
+    return not (content or content_html)
+
+
 async def request_article_refresh(source: Dict[str, Any], article_id: str) -> Dict[str, Any]:
     payload = await _request_json(
         "POST",
@@ -455,6 +543,10 @@ async def request_article_refresh(source: Dict[str, Any], article_id: str) -> Di
         "article_id": str(data.get("article_id") or article_id),
         "status": str(data.get("status") or "pending"),
     }
+
+
+async def trigger_article_refresh(source: Dict[str, Any], article_id: str) -> Dict[str, Any]:
+    return await request_article_refresh(source, article_id)
 
 
 async def poll_refresh_task(source: Dict[str, Any], task_id: str) -> Dict[str, Any]:
@@ -505,7 +597,9 @@ async def refresh_article_content_and_fetch_detail(
     source = auth_state.get("source") or source
     source_update = _build_source_update(source) if auth_state.get("changed") else None
     auth_key = _get_effective_auth_key(source)
-    article_id = str(article.get("external_id") or "").strip()
+    article_id = str(article.get("provider_article_id") or "").strip()
+    if not article_id:
+        article_id = str(article.get("external_id") or "").strip()
 
     if not auth_key:
         return _with_source_update({
@@ -516,7 +610,7 @@ async def refresh_article_content_and_fetch_detail(
     if not article_id:
         return _with_source_update({
             "content_refresh_status": "refresh_failed",
-            "content_refresh_error": "article external_id is required for we-mp-rss refresh",
+            "content_refresh_error": "article provider_article_id is required for we-mp-rss refresh",
         }, source_update)
 
     requested_at = datetime.utcnow()

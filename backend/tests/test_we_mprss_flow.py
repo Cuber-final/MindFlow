@@ -1,7 +1,9 @@
 import asyncio
+import datetime as dt
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -36,34 +38,15 @@ WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH = {
     },
 }
 
-WE_MP_RSS_JSON_FEED = """
-{
-  "name": "PaperAgent",
-  "link": "/feed/MP_WXS_3941633310.json",
-  "description": "日更，解读AI前沿技术热点Paper",
-  "items": [
-    {
-      "id": "3941633310-2247506745_1",
-      "title": "首篇全新情景认知视角的大模型Agent综述",
-      "description": "大家都在谈 Agent",
-      "link": "https://mp.weixin.qq.com/s/fa4xzuQoh7uQ2QYczLhHMA",
-      "updated": "2026-04-21T17:28:51+08:00",
-      "content": "<section><p>feed html content</p></section>"
-    }
-  ]
-}
-"""
-
-
 class TestWeMpRssFeedNormalization:
-    def test_normalize_single_channel_feed_url_to_json_and_preserve_query(self):
-        from services.we_mprss import normalize_feed_url_for_discovery
+    def test_parse_provider_source_id_from_feed_url(self):
+        from services.we_mprss import parse_provider_source_id_from_feed_url
 
-        raw_url = "http://127.0.0.1:8001/feed/MP_WXS_3941633310.rss?limit=5&offset=10"
+        provider_source_id = parse_provider_source_id_from_feed_url(
+            "http://127.0.0.1:8001/feed/MP_WXS_3941633310.rss?limit=5&offset=10"
+        )
 
-        normalized = normalize_feed_url_for_discovery(raw_url)
-
-        assert normalized == "http://127.0.0.1:8001/feed/MP_WXS_3941633310.json?limit=5&offset=10"
+        assert provider_source_id == "MP_WXS_3941633310"
 
     def test_rewrite_loopback_feed_url_to_host_docker_internal_inside_container(self):
         from services.we_mprss import rewrite_local_service_url_for_runtime
@@ -202,24 +185,96 @@ class TestWeMpRssAuthStability:
 
 class TestWeMpRssDiscoveryState:
     @pytest.mark.asyncio
-    async def test_fetch_source_articles_marks_new_we_mp_rss_entries_waiting_for_refresh(self):
-        with patch("services.crawler.get_source_by_id", new=AsyncMock(return_value=WE_MP_RSS_SOURCE)):
-            with patch("services.crawler.ensure_source_auth_state", new=AsyncMock(return_value={"source": WE_MP_RSS_SOURCE, "changed": False})):
-                with patch("services.crawler.get_article_by_external_id", new=AsyncMock(return_value=None)):
-                    with patch("services.crawler.update_source_fetch_time", new=AsyncMock(return_value=None)):
-                        with patch("services.crawler.add_fetch_log", new=AsyncMock(return_value=None)):
-                            with patch("services.crawler.fetch_feed_document", new=AsyncMock(return_value=(WE_MP_RSS_JSON_FEED, "application/json"))):
-                                with patch("services.crawler.create_article", new=AsyncMock(return_value=101)) as mock_create_article:
-                                    count, message = await crawler.fetch_source_articles(WE_MP_RSS_SOURCE["id"])
+    async def test_fetch_source_articles_syncs_today_provider_articles_and_triggers_refresh(self):
+        prepared_source = {
+            **WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH,
+            "provider_source_id": "MP_WXS_3941633310",
+            "auth_key": "fresh-token",
+            "config": {
+                **WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH["config"],
+                "we_mprss_auth": {
+                    **WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH["config"]["we_mprss_auth"],
+                    "refresh_token": "refresh-token-2",
+                },
+            },
+        }
+        today_articles = [
+            {
+                "id": "wx-100",
+                "title": "今天缺正文的文章",
+                "url": "https://mp.weixin.qq.com/s/missing-content",
+                "publish_time": int(dt.datetime(2026, 4, 23, 9, 0, tzinfo=ZoneInfo("Asia/Shanghai")).timestamp()),
+                "has_content": 0,
+                "content": "",
+                "content_html": "",
+            },
+            {
+                "id": "wx-101",
+                "title": "今天已带正文的文章",
+                "url": "https://mp.weixin.qq.com/s/ready-content",
+                "publish_time": int(dt.datetime(2026, 4, 23, 10, 0, tzinfo=ZoneInfo("Asia/Shanghai")).timestamp()),
+                "has_content": 1,
+                "content": "正文文本",
+                "content_html": "<article><p>正文文本</p></article>",
+            },
+        ]
 
-        assert count == 1
+        with patch("services.crawler.get_source_by_id", new=AsyncMock(return_value=WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH)):
+            with patch("services.crawler.ensure_source_auth_state", new=AsyncMock(return_value={"source": prepared_source, "changed": True})):
+                with patch("services.crawler.update_source", new=AsyncMock(return_value=True), create=True) as mock_update_source:
+                    with patch("services.crawler.trigger_mp_refresh", new=AsyncMock(return_value={"code": 0, "data": {"task": "ok"}}), create=True) as mock_trigger_mp_refresh:
+                        with patch("services.crawler.fetch_latest_articles_by_mp_id", new=AsyncMock(return_value=today_articles), create=True) as mock_fetch_latest_articles:
+                            with patch("services.crawler.filter_today_articles", return_value=today_articles, create=True):
+                                with patch("services.crawler.needs_content_backfill", side_effect=[True, False], create=True):
+                                    with patch("services.crawler.get_article_by_provider_article_id", new=AsyncMock(side_effect=[None, None]), create=True):
+                                        with patch("services.crawler.trigger_article_refresh", new=AsyncMock(return_value={"task_id": "task-123", "status": "pending"}), create=True) as mock_trigger_article_refresh:
+                                            with patch("services.crawler.update_source_fetch_time", new=AsyncMock(return_value=None)):
+                                                with patch("services.crawler.add_fetch_log", new=AsyncMock(return_value=None)):
+                                                    with patch("services.crawler.fetch_feed_document", new=AsyncMock(side_effect=AssertionError("legacy feed discovery should not run"))):
+                                                        with patch("services.crawler.create_article", new=AsyncMock(side_effect=[101, 102])) as mock_create_article:
+                                                            count, message = await crawler.fetch_source_articles(WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH["id"])
+
+        assert count == 2
         assert message == "抓取成功"
-        assert mock_create_article.await_count == 1
+        assert mock_create_article.await_count == 2
+        mock_update_source.assert_awaited_once_with(
+            WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH["id"],
+            auth_key="fresh-token",
+            config=prepared_source["config"],
+            provider_source_id="MP_WXS_3941633310",
+        )
+        mock_trigger_mp_refresh.assert_awaited_once_with(prepared_source, "MP_WXS_3941633310")
+        mock_fetch_latest_articles.assert_awaited_once_with(prepared_source, "MP_WXS_3941633310", latest_limit=10)
+        mock_trigger_article_refresh.assert_awaited_once_with(prepared_source, "wx-100")
 
-        create_kwargs = mock_create_article.await_args.kwargs
-        assert create_kwargs["external_id"] == "3941633310-2247506745_1"
-        assert create_kwargs["content_refresh_status"] == "waiting_for_refresh"
-        assert create_kwargs["content_html"] == ""
+        first_create = mock_create_article.await_args_list[0].kwargs
+        assert first_create["provider_article_id"] == "wx-100"
+        assert first_create["content_refresh_status"] == "refresh_requested"
+        assert first_create["content_refresh_task_id"] == "task-123"
+
+        second_create = mock_create_article.await_args_list[1].kwargs
+        assert second_create["provider_article_id"] == "wx-101"
+        assert second_create["content_refresh_status"] == "detail_fetched"
+        assert second_create["content_html"] == "<article><p>正文文本</p></article>"
+
+    def test_filter_today_articles_keeps_only_current_asia_shanghai_day(self):
+        from services.we_mprss import filter_today_articles
+
+        now = dt.datetime(2026, 4, 23, 10, 0, tzinfo=ZoneInfo("Asia/Shanghai"))
+        articles = [
+            {
+                "id": "today-1",
+                "publish_time": int(dt.datetime(2026, 4, 23, 8, 0, tzinfo=ZoneInfo("Asia/Shanghai")).timestamp()),
+            },
+            {
+                "id": "yesterday-1",
+                "publish_time": int(dt.datetime(2026, 4, 22, 23, 59, tzinfo=ZoneInfo("Asia/Shanghai")).timestamp()),
+            },
+        ]
+
+        result = filter_today_articles(articles, now=now, tz_name="Asia/Shanghai")
+
+        assert [article["id"] for article in result] == ["today-1"]
 
 
 class TestWeMpRssRefreshLifecycle:
@@ -289,7 +344,7 @@ class TestWeMpRssRefreshLifecycle:
         }
         article = {
             "id": 101,
-            "external_id": "3941633310-2247506745_1",
+            "provider_article_id": "wx-100",
             "content_refresh_status": "waiting_for_refresh",
         }
 
@@ -298,6 +353,7 @@ class TestWeMpRssRefreshLifecycle:
         fetch_detail = AsyncMock(
             return_value={
                 "article_id": "3941633310-2247506745_1",
+                "article_id": "wx-100",
                 "title": "首篇全新情景认知视角的大模型Agent综述",
                 "description": "文章摘要",
                 "content": "<div>fallback content</div>",
@@ -324,7 +380,7 @@ class TestWeMpRssRefreshLifecycle:
 
         article = {
             "id": 101,
-            "external_id": "3941633310-2247506745_1",
+            "provider_article_id": "wx-100",
             "content_refresh_status": "waiting_for_refresh",
         }
         prepared_source = {
@@ -348,7 +404,7 @@ class TestWeMpRssRefreshLifecycle:
         poll_status = AsyncMock(return_value={"status": "success"})
         fetch_detail = AsyncMock(
             return_value={
-                "article_id": "3941633310-2247506745_1",
+                "article_id": "wx-100",
                 "title": "首篇全新情景认知视角的大模型Agent综述",
                 "description": "文章摘要",
                 "content": "<div>fallback content</div>",
@@ -370,7 +426,7 @@ class TestWeMpRssRefreshLifecycle:
             "auth_key": "fresh-token",
             "config": prepared_source["config"],
         }
-        request_refresh.assert_awaited_once_with(prepared_source, article["external_id"])
+        request_refresh.assert_awaited_once_with(prepared_source, article["provider_article_id"])
 
     @pytest.mark.asyncio
     async def test_refresh_lifecycle_returns_refresh_failed_when_remote_refresh_errors(self):
@@ -384,7 +440,7 @@ class TestWeMpRssRefreshLifecycle:
         }
         article = {
             "id": 101,
-            "external_id": "3941633310-2247506745_1",
+            "provider_article_id": "wx-100",
             "content_refresh_status": "waiting_for_refresh",
         }
 
@@ -411,7 +467,7 @@ class TestWeMpRssRefreshLifecycle:
         }
         article = {
             "id": 101,
-            "external_id": "3941633310-2247506745_1",
+            "provider_article_id": "wx-100",
             "content_refresh_status": "waiting_for_refresh",
         }
 
@@ -419,7 +475,7 @@ class TestWeMpRssRefreshLifecycle:
         poll_status = AsyncMock(side_effect=RuntimeError("404 task missing"))
         fetch_detail = AsyncMock(
             return_value={
-                "article_id": "3941633310-2247506745_1",
+                "article_id": "wx-100",
                 "title": "首篇全新情景认知视角的大模型Agent综述",
                 "description": "文章摘要",
                 "content": "<div>fallback content</div>",
@@ -450,7 +506,7 @@ class TestWeMpRssRefreshLifecycle:
         }
         article = {
             "id": 101,
-            "external_id": "3941633310-2247506745_1",
+            "provider_article_id": "wx-100",
             "content_refresh_status": "waiting_for_refresh",
         }
 
@@ -458,7 +514,7 @@ class TestWeMpRssRefreshLifecycle:
         poll_status = AsyncMock(return_value={"status": "failed", "error": "browser launch failed"})
         fetch_detail = AsyncMock(
             return_value={
-                "article_id": "3941633310-2247506745_1",
+                "article_id": "wx-100",
                 "title": "首篇全新情景认知视角的大模型Agent综述",
                 "description": "文章摘要",
                 "content": "<div>fallback content</div>",
@@ -487,7 +543,7 @@ class TestSchedulerRefreshLoop:
             {
                 "article_id": 101,
                 "source_id": 2,
-                "external_id": "3941633310-2247506745_1",
+                "provider_article_id": "wx-100",
                 "api_base_url": "http://127.0.0.1:8001/feed/MP_WXS_3941633310.rss?limit=5",
                 "auth_key": "test-auth-token",
                 "source_type": "we_mp_rss",
@@ -520,7 +576,7 @@ class TestSchedulerRefreshLoop:
             {
                 "article_id": 101,
                 "source_id": 2,
-                "external_id": "3941633310-2247506745_1",
+                "provider_article_id": "wx-100",
                 "api_base_url": "http://127.0.0.1:8001/feed/MP_WXS_3941633310.rss?limit=5",
                 "auth_key": "",
                 "source_type": "we_mp_rss",
@@ -571,6 +627,7 @@ class TestSchedulerRefreshLoop:
     async def test_fetch_source_articles_uses_bootstrapped_auth_and_persists_source_state(self):
         prepared_source = {
             **WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH,
+            "provider_source_id": "MP_WXS_3941633310",
             "auth_key": "fresh-token",
             "config": {
                 **WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH["config"],
@@ -580,16 +637,32 @@ class TestSchedulerRefreshLoop:
                 },
             },
         }
+        today_articles = [
+            {
+                "id": "wx-100",
+                "title": "今天缺正文的文章",
+                "url": "https://mp.weixin.qq.com/s/missing-content",
+                "publish_time": int(dt.datetime(2026, 4, 23, 9, 0, tzinfo=ZoneInfo("Asia/Shanghai")).timestamp()),
+                "has_content": 0,
+                "content": "",
+                "content_html": "",
+            }
+        ]
 
         with patch("services.crawler.get_source_by_id", new=AsyncMock(return_value=WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH)):
             with patch("services.crawler.ensure_source_auth_state", new=AsyncMock(return_value={"source": prepared_source, "changed": True})):
-                with patch("services.crawler.update_source_auth_state", new=AsyncMock(return_value=True)) as mock_update_source:
-                    with patch("services.crawler.get_article_by_external_id", new=AsyncMock(return_value=None)):
-                        with patch("services.crawler.update_source_fetch_time", new=AsyncMock(return_value=None)):
-                            with patch("services.crawler.add_fetch_log", new=AsyncMock(return_value=None)):
-                                with patch("services.crawler.fetch_feed_document", new=AsyncMock(return_value=(WE_MP_RSS_JSON_FEED, "application/json"))) as mock_fetch_feed:
-                                    with patch("services.crawler.create_article", new=AsyncMock(return_value=101)):
-                                        count, message = await crawler.fetch_source_articles(WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH["id"])
+                with patch("services.crawler.update_source", new=AsyncMock(return_value=True), create=True) as mock_update_source:
+                    with patch("services.crawler.trigger_mp_refresh", new=AsyncMock(return_value={"code": 0, "data": {"task": "ok"}}), create=True):
+                        with patch("services.crawler.fetch_latest_articles_by_mp_id", new=AsyncMock(return_value=today_articles), create=True):
+                            with patch("services.crawler.filter_today_articles", return_value=today_articles, create=True):
+                                with patch("services.crawler.needs_content_backfill", return_value=True, create=True):
+                                    with patch("services.crawler.get_article_by_provider_article_id", new=AsyncMock(return_value=None), create=True):
+                                        with patch("services.crawler.trigger_article_refresh", new=AsyncMock(return_value={"task_id": "task-123", "status": "pending"}), create=True):
+                                            with patch("services.crawler.update_source_fetch_time", new=AsyncMock(return_value=None)):
+                                                with patch("services.crawler.add_fetch_log", new=AsyncMock(return_value=None)):
+                                                    with patch("services.crawler.fetch_feed_document", new=AsyncMock(side_effect=AssertionError("legacy feed discovery should not run"))):
+                                                        with patch("services.crawler.create_article", new=AsyncMock(return_value=101)):
+                                                            count, message = await crawler.fetch_source_articles(WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH["id"])
 
         assert count == 1
         assert message == "抓取成功"
@@ -597,10 +670,7 @@ class TestSchedulerRefreshLoop:
             WE_MP_RSS_SOURCE_WITH_PASSWORD_AUTH["id"],
             auth_key="fresh-token",
             config=prepared_source["config"],
-        )
-        mock_fetch_feed.assert_awaited_once_with(
-            "http://127.0.0.1:8001/feed/MP_WXS_3941633310.json?limit=5",
-            "fresh-token",
+            provider_source_id="MP_WXS_3941633310",
         )
 
     @pytest.mark.asyncio

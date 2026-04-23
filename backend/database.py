@@ -89,7 +89,7 @@ from models import (
     NewsSource, Article, AnchorPoint, DailyDigest,
     UserInterestTag, UserBehaviorLog, DigestFeedback, AIConfig, FetchLog
 )
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, and_
 
 
 # --------------------------------------------------------------------------
@@ -120,6 +120,7 @@ async def create_source(
     name: str,
     source_type: str,
     api_base_url: str,
+    provider_source_id: Optional[str] = None,
     auth_key: str = "",
     config: dict = None
 ) -> int:
@@ -129,6 +130,7 @@ async def create_source(
             name=name,
             source_type=source_type,
             api_base_url=api_base_url,
+            provider_source_id=provider_source_id,
             auth_key=auth_key,
             config=config or {}
         )
@@ -242,6 +244,7 @@ async def create_article(
     source_id: int,
     title: str,
     external_id: str = "",
+    provider_article_id: Optional[str] = None,
     link: str = "",
     content: str = "",
     content_html: str = "",
@@ -260,6 +263,7 @@ async def create_article(
             source_id=source_id,
             title=title,
             external_id=external_id,
+            provider_article_id=provider_article_id,
             link=link,
             content=content,
             content_html=content_html,
@@ -287,6 +291,22 @@ async def update_article_summary(article_id: int, summary: str):
         article = result.scalar_one_or_none()
         if article:
             article.summary = summary
+
+
+async def get_article_by_provider_article_id(
+    source_id: int,
+    provider_article_id: str,
+) -> Optional[Dict[str, Any]]:
+    """Get an article by source_id and provider_article_id."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(Article).where(
+                Article.source_id == source_id,
+                Article.provider_article_id == provider_article_id,
+            )
+        )
+        article = result.scalar_one_or_none()
+        return article.__dict__ if article else None
 
 
 async def update_article_content_refresh(article_id: int, **kwargs) -> bool:
@@ -377,6 +397,7 @@ async def get_articles_due_for_content_refresh(
                 Article.id.label("article_id"),
                 Article.source_id.label("source_id"),
                 Article.external_id.label("external_id"),
+                Article.provider_article_id.label("provider_article_id"),
                 Article.title.label("title"),
                 Article.link.label("link"),
                 Article.fetched_at.label("fetched_at"),
@@ -392,8 +413,10 @@ async def get_articles_due_for_content_refresh(
             .where(
                 NewsSource.source_type == "we_mp_rss",
                 Article.content_refresh_status == "waiting_for_refresh",
-                Article.external_id.is_not(None),
-                Article.external_id != "",
+                or_(
+                    and_(Article.provider_article_id.is_not(None), Article.provider_article_id != ""),
+                    and_(Article.external_id.is_not(None), Article.external_id != ""),
+                ),
                 Article.fetched_at <= cutoff,
             )
             .order_by(Article.fetched_at.asc())
@@ -410,6 +433,7 @@ async def get_articles_with_active_refresh_tasks(limit: int = 20) -> List[Dict[s
                 Article.id.label("article_id"),
                 Article.source_id.label("source_id"),
                 Article.external_id.label("external_id"),
+                Article.provider_article_id.label("provider_article_id"),
                 Article.title.label("title"),
                 Article.link.label("link"),
                 Article.content_refresh_status.label("content_refresh_status"),
@@ -446,6 +470,7 @@ async def get_articles_ready_for_anchor_extraction(
                 Article.id.label("article_id"),
                 Article.source_id.label("source_id"),
                 Article.external_id.label("external_id"),
+                Article.provider_article_id.label("provider_article_id"),
                 Article.title.label("title"),
                 Article.link.label("link"),
                 Article.content.label("content"),

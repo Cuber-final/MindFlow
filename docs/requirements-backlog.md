@@ -109,6 +109,12 @@
 | `REQ-AI-003` | `AI` | P2 | `planned` | 提供可选翻译能力 | 作为文章级 AI 加工增强的一部分，而非当前主链路前置条件 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-AI-004` | `AI` | P2 | `planned` | 明确文章级 processing 状态在 Detail / Digest / Now 中的消费方式 | AI 加工结果不仅要生成，还要有稳定的消费路径 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 
+#### 开发体验与依赖维护
+
+| ID | 分类 | 优先级 | 状态 | 需求 | 备注 | 关联计划 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `REQ-DX-001` | `DX` | P2 | `open` | 升级或对齐 FastAPI / Starlette 与 `httpx` 测试客户端依赖，消除 `TestClient(app)` deprecation warnings | 当前测试通过，但 `httpx` 0.27 已对底层 shortcut 给出弃用提示，需后续单独处理依赖兼容与测试清理 | `-` |
+
 ## 新需求录入模板
 
 新增需求时，按下面字段补一行：
