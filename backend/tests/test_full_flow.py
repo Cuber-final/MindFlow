@@ -79,7 +79,7 @@ class TestArticleFetching:
         return {
             "id": 1,
             "name": "测试 RSS 源",
-            "source_type": "we_mp_rss",
+            "source_type": "native_rss",
             "api_base_url": "https://rss.example.com/feed/123.xml",
             "auth_key": "",
             "config": {"feed_url": "https://rss.example.com/feed/123.xml"},

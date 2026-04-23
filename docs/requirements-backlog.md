@@ -113,7 +113,7 @@
 
 | ID | 分类 | 优先级 | 状态 | 需求 | 备注 | 关联计划 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `REQ-DX-001` | `DX` | P2 | `open` | 升级或对齐 FastAPI / Starlette 与 `httpx` 测试客户端依赖，消除 `TestClient(app)` deprecation warnings | 当前测试通过，但 `httpx` 0.27 已对底层 shortcut 给出弃用提示，需后续单独处理依赖兼容与测试清理 | `-` |
+| `REQ-DX-001` | `DX` | P2 | `done` | 升级或对齐 FastAPI / Starlette 与 `httpx` 测试客户端依赖，消除 `TestClient(app)` deprecation warnings | 已升级到 `fastapi 0.136.0` / `starlette 1.0.0` / `httpx 0.28.1`，并以测试验证 `TestClient` 的弃用 warning 已消失 | `-` |
 
 ## 新需求录入模板
 
