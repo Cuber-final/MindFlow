@@ -276,10 +276,17 @@ export default function Settings() {
     }
   }
 
-  async function loadSchedule() {
-    setScheduleState('loading');
+  async function loadSchedule(options?: { showLoading?: boolean; clearFeedback?: boolean }) {
+    const showLoading = options?.showLoading ?? true;
+    const clearFeedback = options?.clearFeedback ?? true;
+
+    if (showLoading) {
+      setScheduleState('loading');
+    }
     setScheduleError('');
-    setScheduleFeedback(null);
+    if (clearFeedback) {
+      setScheduleFeedback(null);
+    }
 
     try {
       const data = await configApi.getSchedule();
@@ -372,6 +379,9 @@ export default function Settings() {
   }
 
   async function handleScheduleSave() {
+    if (scheduleSaving) return;
+    const scrollTopBeforeSave = window.scrollY;
+
     setScheduleFeedback(null);
     const validationError = validateSchedule(scheduleTimes);
     if (validationError) {
@@ -383,7 +393,7 @@ export default function Settings() {
     setScheduleSaving(true);
     try {
       const result = await configApi.updateSchedule(normalized);
-      await loadSchedule();
+      await loadSchedule({ showLoading: false, clearFeedback: false });
       setScheduleFeedback({
         success: true,
         message: result.message || (isZh ? '调度配置已保存' : 'Schedule configuration saved'),
@@ -396,6 +406,9 @@ export default function Settings() {
       });
     } finally {
       setScheduleSaving(false);
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollTopBeforeSave });
+      });
     }
   }
 
@@ -650,16 +663,30 @@ export default function Settings() {
 
                 <div className="flex flex-wrap gap-3 pt-2">
                   <button
-                    onClick={() => void handleScheduleSave()}
-                    disabled={scheduleSaving}
-                    className="px-8 py-2 bg-[#0d4656] text-white rounded text-[11px] font-bold uppercase tracking-widest hover:bg-[#2c5e6e] transition-colors disabled:opacity-50"
+                    type="button"
+                    onClick={() => {
+                      if (!scheduleSaving) {
+                        void handleScheduleSave();
+                      }
+                    }}
+                    aria-disabled={scheduleSaving}
+                    className={`px-8 py-2 bg-[#0d4656] text-white rounded text-[11px] font-bold uppercase tracking-widest transition-colors ${
+                      scheduleSaving ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'hover:bg-[#2c5e6e]'
+                    }`}
                   >
                     {scheduleSaving ? text.scheduleSaving : text.scheduleSave}
                   </button>
                   <button
-                    onClick={() => void loadSchedule()}
-                    disabled={scheduleSaving}
-                    className="px-6 py-2 border border-[#c0c8cb] text-[#40484b] text-[11px] font-bold uppercase tracking-widest rounded hover:bg-[#e8e8e6] transition-colors disabled:opacity-50"
+                    type="button"
+                    onClick={() => {
+                      if (!scheduleSaving) {
+                        void loadSchedule();
+                      }
+                    }}
+                    aria-disabled={scheduleSaving}
+                    className={`px-6 py-2 border border-[#c0c8cb] text-[#40484b] text-[11px] font-bold uppercase tracking-widest rounded transition-colors ${
+                      scheduleSaving ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'hover:bg-[#e8e8e6]'
+                    }`}
                   >
                     {text.retry}
                   </button>
