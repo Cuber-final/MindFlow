@@ -1,5 +1,11 @@
 from fastapi import APIRouter, HTTPException
-from schemas import NewsSourceCreate, NewsSourceUpdate, NewsSourceResponse, FetchResponse
+from schemas import (
+    NewsSourceCreate,
+    NewsSourceUpdate,
+    NewsSourceResponse,
+    FetchResponse,
+    WeMpRssAuthTemplateResponse,
+)
 from database import (
     get_all_sources, get_source_by_id, create_source,
     update_source, delete_source
@@ -8,6 +14,17 @@ from services.crawler import fetch_source_articles
 import json
 
 router = APIRouter(prefix="/api/sources", tags=["新闻源管理"])
+
+
+def _coerce_config(config) -> dict:
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except json.JSONDecodeError:
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+    return config
 
 
 def _format_datetime(dt):
@@ -24,15 +41,7 @@ def _format_datetime(dt):
 def _source_to_response(source: dict) -> dict:
     """Convert database source dict to response-safe payload."""
     result = dict(source)
-    config = result.get("config")
-    if isinstance(config, str):
-        try:
-            config = json.loads(config)
-        except json.JSONDecodeError:
-            config = {}
-    if not isinstance(config, dict):
-        config = {}
-    result["config"] = config
+    result["config"] = _coerce_config(result.get("config"))
 
     result["auth_key"] = result.get("auth_key") or ""
 
@@ -60,14 +69,7 @@ def _normalize_source_payload(payload: dict) -> dict:
     normalized = dict(payload)
     normalized["source_type"] = _normalize_source_type(normalized.get("source_type"))
 
-    config = normalized.get("config") or {}
-    if isinstance(config, str):
-        try:
-            config = json.loads(config)
-        except json.JSONDecodeError:
-            config = {}
-    if not isinstance(config, dict):
-        config = {}
+    config = _coerce_config(normalized.get("config") or {})
 
     feed_url = normalized.get("api_base_url")
     if feed_url and not config.get("feed_url"):
@@ -83,6 +85,35 @@ async def list_sources():
     """获取所有新闻源"""
     sources = await get_all_sources()
     return [_source_to_response(s) for s in sources]
+
+
+@router.get("/we-mp-rss-auth-template", response_model=WeMpRssAuthTemplateResponse)
+async def get_we_mprss_auth_template():
+    """获取最近已登记的 we-mp-rss 用户名与密码，用于新建同类来源时预填。"""
+    sources = await get_all_sources()
+
+    for source in sources:
+        if _normalize_source_type(source.get("source_type")) != "we_mp_rss":
+            continue
+        config = _coerce_config(source.get("config"))
+        auth = config.get("we_mprss_auth")
+        if not isinstance(auth, dict):
+            continue
+
+        username = str(auth.get("username") or "").strip()
+        password = str(auth.get("password") or "")
+        if not username or not password:
+            continue
+
+        return WeMpRssAuthTemplateResponse(
+            available=True,
+            source_id=source.get("id"),
+            source_name=source.get("name"),
+            username=username,
+            password=password,
+        )
+
+    return WeMpRssAuthTemplateResponse()
 
 
 @router.post("", response_model=NewsSourceResponse)

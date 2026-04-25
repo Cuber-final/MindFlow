@@ -203,6 +203,8 @@ export default function Settings() {
     scheduleLoadError: isZh ? '调度配置加载失败' : 'Failed to load schedule configuration',
     scheduleSave: isZh ? '保存调度' : 'Save Schedule',
     scheduleSaving: isZh ? '保存中...' : 'Saving...',
+    scheduleReload: isZh ? '重新加载配置' : 'Reload Configuration',
+    scheduleReloaded: isZh ? '已重新加载当前调度配置' : 'Schedule configuration reloaded',
     addTime: isZh ? '添加时间点' : 'Add Time',
     removeTime: isZh ? '移除时间点' : 'Remove time',
     scheduleHint: isZh ? '支持精确到分钟的 `HH:mm` 格式。' : 'Supports minute-level scheduling in `HH:mm` format.',
@@ -276,7 +278,7 @@ export default function Settings() {
     }
   }
 
-  async function loadSchedule(options?: { showLoading?: boolean; clearFeedback?: boolean }) {
+  async function loadSchedule(options?: { showLoading?: boolean; clearFeedback?: boolean }): Promise<boolean> {
     const showLoading = options?.showLoading ?? true;
     const clearFeedback = options?.clearFeedback ?? true;
 
@@ -293,9 +295,11 @@ export default function Settings() {
       setScheduleData(data);
       setScheduleTimes(data.times.length ? data.times : DEFAULT_SCHEDULE_TIMES);
       setScheduleState('ready');
+      return true;
     } catch (error) {
       setScheduleError(error instanceof Error ? error.message : text.scheduleLoadError);
       setScheduleState('error');
+      return false;
     }
   }
 
@@ -409,6 +413,15 @@ export default function Settings() {
       requestAnimationFrame(() => {
         window.scrollTo({ top: scrollTopBeforeSave });
       });
+    }
+  }
+
+  async function handleScheduleReload() {
+    if (scheduleSaving) return;
+    setScheduleFeedback(null);
+    const reloaded = await loadSchedule({ showLoading: false, clearFeedback: false });
+    if (reloaded) {
+      setScheduleFeedback({ success: true, message: text.scheduleReloaded });
     }
   }
 
@@ -604,7 +617,7 @@ export default function Settings() {
                 onClick={() => void loadSchedule()}
                 className="px-5 py-2 rounded bg-red-600 text-white text-sm hover:bg-red-700"
               >
-                {text.retry}
+                {text.scheduleReload}
               </button>
             </div>
           )}
@@ -680,7 +693,7 @@ export default function Settings() {
                     type="button"
                     onClick={() => {
                       if (!scheduleSaving) {
-                        void loadSchedule();
+                        void handleScheduleReload();
                       }
                     }}
                     aria-disabled={scheduleSaving}
@@ -688,7 +701,7 @@ export default function Settings() {
                       scheduleSaving ? 'opacity-50 cursor-not-allowed pointer-events-none' : 'hover:bg-[#e8e8e6]'
                     }`}
                   >
-                    {text.retry}
+                    {text.scheduleReload}
                   </button>
                 </div>
               </div>

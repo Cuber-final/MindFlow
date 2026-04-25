@@ -49,6 +49,7 @@ export interface NewsSource {
   id: number;
   name: string;
   source_type: string;
+  provider_source_id?: string | null;
   api_base_url: string;
   auth_key: string;
   config: Record<string, unknown>;
@@ -66,6 +67,20 @@ export interface WeMpRssAuthConfig {
   token_updated_at?: string;
   verified_at?: string;
   last_auth_error?: string;
+}
+
+export interface WeMpRssAuthTemplate {
+  available: boolean;
+  source_id: number | null;
+  source_name: string | null;
+  username: string;
+  password: string;
+}
+
+export interface SourceFetchResult {
+  success: boolean;
+  message: string;
+  articles_added: number;
 }
 
 export interface AIConfig {
@@ -118,6 +133,33 @@ export interface ScheduleConfig {
   times: string[];
   jobs: ScheduleJob[];
   latest_runs: Record<string, JobRunSummary>;
+}
+
+export interface Article {
+  id: number;
+  source_id: number;
+  external_id: string;
+  provider_article_id?: string | null;
+  title: string;
+  link: string;
+  content: string;
+  summary: string;
+  author: string;
+  published_at: string | null;
+  fetched_at: string;
+  content_refresh_status: string;
+  content_refresh_error?: string | null;
+  content_refresh_requested_at?: string | null;
+  content_refresh_checked_at?: string | null;
+  content_refreshed_at?: string | null;
+  source_name?: string | null;
+}
+
+export interface ArticleListResponse {
+  items: Article[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 // === Digest Types ===
@@ -345,6 +387,8 @@ function normalizeNowDetail(detail: RawNowDetail): NowDetail {
 export const sourcesApi = {
   list: () => fetchApi<NewsSource[]>('/sources'),
 
+  getWeMpRssAuthTemplate: () => fetchApi<WeMpRssAuthTemplate>('/sources/we-mp-rss-auth-template'),
+
   get: (id: number) => fetchApi<NewsSource>(`/sources/${id}`),
 
   create: (data: Omit<NewsSource, 'id' | 'created_at' | 'updated_at' | 'last_fetch_at' | 'article_count'>) =>
@@ -365,7 +409,26 @@ export const sourcesApi = {
     }),
 
   fetch: (id: number) =>
-    fetchApi<{ success: boolean; message: string; articles_added: number }>(`/sources/${id}/fetch`, {
+    fetchApi<SourceFetchResult>(`/sources/${id}/fetch`, {
+      method: 'POST',
+    }),
+};
+
+// === Articles API ===
+export const articlesApi = {
+  list: (params?: { source_id?: number; limit?: number; offset?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.source_id) searchParams.set('source_id', String(params.source_id));
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const query = searchParams.toString();
+    return fetchApi<ArticleListResponse>(`/articles${query ? `?${query}` : ''}`);
+  },
+
+  get: (id: number) => fetchApi<Article>(`/articles/${id}`),
+
+  summarize: (id: number) =>
+    fetchApi<{ success: boolean; summary: string }>(`/articles/${id}/summarize`, {
       method: 'POST',
     }),
 };

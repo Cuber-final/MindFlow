@@ -23,6 +23,9 @@ async def enrich_article_with_source(article: dict) -> dict:
     source_map = {s["id"]: s["name"] for s in sources}
     article["published_at"] = _format_datetime(article.get("published_at"))
     article["fetched_at"] = _format_datetime(article.get("fetched_at"))
+    article["content_refresh_requested_at"] = _format_datetime(article.get("content_refresh_requested_at"))
+    article["content_refresh_checked_at"] = _format_datetime(article.get("content_refresh_checked_at"))
+    article["content_refreshed_at"] = _format_datetime(article.get("content_refreshed_at"))
     article["source_name"] = source_map.get(article["source_id"], "未知来源")
     return article
 

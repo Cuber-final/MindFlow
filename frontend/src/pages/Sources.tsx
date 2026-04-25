@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import dayjs from 'dayjs';
 
-import { sourcesApi, type NewsSource, type WeMpRssAuthConfig } from '../api/newsletter';
+import {
+  sourcesApi,
+  type NewsSource,
+  type SourceFetchResult,
+  type WeMpRssAuthConfig,
+  type WeMpRssAuthTemplate,
+} from '../api/newsletter';
 import { useI18n } from '../i18n';
 
 type FetchModalStatus = 'loading' | 'success' | 'error';
@@ -67,6 +73,7 @@ export default function Sources() {
       : ['Please verify the we-mp-rss service and /feed/... endpoint are reachable', 'Please verify the local deployment already has article data'],
     fetchingSource: isZh ? '正在抓取 {name}，请稍候...' : 'Fetching {name}, please wait...',
     sourceId: isZh ? '来源 ID' : 'Source ID',
+    providerSourceId: isZh ? 'Provider ID' : 'Provider ID',
     sourceType: isZh ? '来源类型' : 'Source Type',
     triggerTime: isZh ? '触发时间' : 'Triggered at',
     addedArticles: isZh ? '新增文章' : 'Articles added',
@@ -251,6 +258,7 @@ export default function Sources() {
       message: text.fetchingSource.replace('{name}', source.name),
       details: [
         `${text.sourceId}: ${source.id}`,
+        ...(source.provider_source_id ? [`${text.providerSourceId}: ${source.provider_source_id}`] : []),
         `${text.sourceType}: ${sourceTypeLabel(source.source_type, isZh)}`,
         `${text.triggerTime}: ${startedAt}`,
       ],
@@ -260,6 +268,7 @@ export default function Sources() {
       const result = await sourcesApi.fetch(source.id);
       const details = [
         `${text.sourceId}: ${source.id}`,
+        ...(source.provider_source_id ? [`${text.providerSourceId}: ${source.provider_source_id}`] : []),
         `${text.sourceType}: ${sourceTypeLabel(source.source_type, isZh)}`,
         `${text.triggerTime}: ${startedAt}`,
         `${text.addedArticles}: ${result.articles_added ?? 0}`,
@@ -295,6 +304,7 @@ export default function Sources() {
         message: text.fetchFailedWithReason.replace('{reason}', rawMessage),
         details: [
           `${text.sourceId}: ${source.id}`,
+          ...(source.provider_source_id ? [`${text.providerSourceId}: ${source.provider_source_id}`] : []),
           `${text.sourceType}: ${sourceTypeLabel(source.source_type, isZh)}`,
           `${text.triggerTime}: ${startedAt}`,
           `${isZh ? '异常类型' : 'Error type'}: ${errorType}`,
@@ -486,6 +496,11 @@ export default function Sources() {
                           <div>
                             <div className="font-['Newsreader'] text-lg italic text-[#1a1c1b]">{source.name}</div>
                             <div className="text-xs font-medium tracking-wide text-[#71787c]">{source.api_base_url}</div>
+                            {source.provider_source_id && (
+                              <div className="mt-1 text-[11px] font-semibold text-[#0d4656]">
+                                {text.providerSourceId}: {source.provider_source_id}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -601,9 +616,23 @@ export default function Sources() {
         <SourceModal
           source={editingSource}
           onClose={() => setShowModal(false)}
-          onSave={() => {
+          onSave={(savedSource, fetchResult, startedAt) => {
             setShowModal(false);
+            setEditingSource(null);
             void loadSources();
+            showFetchStatusModal({
+              status: 'success',
+              source: savedSource,
+              message: fetchResult.message || text.fetchCompleted,
+              details: [
+                `${text.sourceId}: ${savedSource.id}`,
+                ...(savedSource.provider_source_id ? [`${text.providerSourceId}: ${savedSource.provider_source_id}`] : []),
+                `${text.sourceType}: ${sourceTypeLabel(savedSource.source_type, isZh)}`,
+                `${text.triggerTime}: ${startedAt}`,
+                `${text.addedArticles}: ${fetchResult.articles_added ?? 0}`,
+              ],
+              articlesAdded: fetchResult.articles_added ?? 0,
+            });
           }}
         />
       )}
@@ -625,23 +654,70 @@ export default function Sources() {
 interface SourceModalProps {
   source: NewsSource | null;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (source: NewsSource, fetchResult: SourceFetchResult, startedAt: string) => void;
 }
 
 function SourceModal({ source, onClose, onSave }: SourceModalProps) {
   const { locale } = useI18n();
   const isZh = locale === 'zh-CN';
-  const existingConfig = (source?.config ?? {}) as Record<string, unknown>;
+  const [persistedSource, setPersistedSource] = useState<NewsSource | null>(source);
+  const activeSource = persistedSource;
+  const existingConfig = (activeSource?.config ?? {}) as Record<string, unknown>;
   const existingAuth = getWeMpRssAuth(existingConfig);
   const existingPassword = existingAuth?.password ?? '';
-  const initialType = normalizeFrontendSourceType(source?.source_type);
-  const [name, setName] = useState(source?.name || '');
+  const initialType = normalizeFrontendSourceType(activeSource?.source_type);
+  const [name, setName] = useState(activeSource?.name || '');
   const [sourceType, setSourceType] = useState<SourceType>(initialType);
-  const [apiBaseUrl, setApiBaseUrl] = useState(source?.api_base_url || '');
+  const [apiBaseUrl, setApiBaseUrl] = useState(activeSource?.api_base_url || '');
+  const [authTemplate, setAuthTemplate] = useState<WeMpRssAuthTemplate | null>(null);
+  const [authTemplateLoading, setAuthTemplateLoading] = useState(!activeSource);
   const [authUsername, setAuthUsername] = useState(existingAuth?.username ?? '');
+  const [authPasswordSeed, setAuthPasswordSeed] = useState(existingPassword);
   const [authPassword, setAuthPassword] = useState(existingPassword ? MASKED_PASSWORD_PLACEHOLDER : '');
   const [authPasswordDirty, setAuthPasswordDirty] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [savingStage, setSavingStage] = useState<'idle' | 'saving' | 'validating'>('idle');
+  const [submitFeedback, setSubmitFeedback] = useState<{
+    success: boolean;
+    message: string;
+    details?: string[];
+  } | null>(null);
+
+  const saving = savingStage !== 'idle';
+
+  useEffect(() => {
+    if (activeSource) {
+      setAuthTemplateLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setAuthTemplateLoading(true);
+
+    sourcesApi.getWeMpRssAuthTemplate()
+      .then((template) => {
+        if (cancelled) return;
+        setAuthTemplate(template);
+        if (!template.available) return;
+
+        setAuthUsername((current) => current || template.username);
+        setAuthPasswordSeed((current) => current || template.password);
+        setAuthPassword((current) => current || (template.password ? MASKED_PASSWORD_PLACEHOLDER : ''));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAuthTemplate(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setAuthTemplateLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSource]);
 
   const helperText =
     sourceType === 'native_rss'
@@ -653,12 +729,12 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
         : 'Paste the feed generated by we-mp-rss and provide the service username/password.';
 
   const authHelperText = isZh
-    ? '保存后用户名会直接显示，密码会以遮盖形式显示；不修改密码时会保留原值。'
-    : 'After save, the username remains visible while the password stays masked. If you leave it unchanged, the existing password is preserved.';
+    ? '可复用已登记用户；密码会以遮盖形式显示，不修改时会保留原值。'
+    : 'You can reuse registered credentials. The password stays masked and is preserved when unchanged.';
 
   const nextPassword =
-    source && !authPasswordDirty
-      ? existingPassword
+    !authPasswordDirty
+      ? authPasswordSeed
       : authPassword;
 
   const credentialsChanged =
@@ -670,10 +746,8 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
   const handlePasswordChange = (value: string) => {
     if (!authPasswordDirty) {
       setAuthPasswordDirty(true);
-      if (value === MASKED_PASSWORD_PLACEHOLDER) {
-        setAuthPassword('');
-        return;
-      }
+      setAuthPassword(value.replace(MASKED_PASSWORD_PLACEHOLDER, ''));
+      return;
     }
     setAuthPassword(value);
   };
@@ -704,15 +778,29 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
 
   const buildAuthKey = () => {
     if (sourceType !== 'we_mp_rss') {
-      return source?.source_type === 'we_mp_rss' ? '' : (source?.auth_key || '');
+      return activeSource?.source_type === 'we_mp_rss' ? '' : (activeSource?.auth_key || '');
     }
-    if (!source) {
+    if (!activeSource) {
       return '';
     }
-    return credentialsChanged ? '' : (source.auth_key || '');
+    return credentialsChanged ? '' : (activeSource.auth_key || '');
   };
 
-  const validateWeMpRssAuth = () => {
+  const validateSource = () => {
+    if (!name.trim()) {
+      return isZh ? '请输入新闻源名称' : 'Please enter a source name';
+    }
+    if (!apiBaseUrl.trim()) {
+      return isZh ? '请输入 Feed URL' : 'Please enter a Feed URL';
+    }
+    try {
+      const parsed = new URL(apiBaseUrl.trim());
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return isZh ? '请输入 http:// 或 https:// 开头的 Feed URL' : 'Please enter a Feed URL starting with http:// or https://';
+      }
+    } catch {
+      return isZh ? '请输入有效的 Feed URL' : 'Please enter a valid Feed URL';
+    }
     if (sourceType !== 'we_mp_rss') {
       return null;
     }
@@ -725,41 +813,89 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
     return null;
   };
 
-  const validationError = validateWeMpRssAuth();
+  const validationError = validateSource();
 
   const sourceTypeOptions: Array<{ value: SourceType; label: string }> = [
     { value: 'native_rss', label: isZh ? '通用 RSS' : 'Generic RSS' },
     { value: 'we_mp_rss', label: isZh ? '微信公众号' : 'We-MP-RSS' },
   ];
 
-  const authConfigured = Boolean(existingAuth?.username && existingPassword);
+  const authConfigured = Boolean((existingAuth?.username || authTemplate?.username) && authPasswordSeed);
+  const validationHints = sourceType === 'we_mp_rss'
+    ? isZh
+      ? ['请检查 Feed URL 是否来自同一个 we-mp-rss 服务', '请检查用户名、密码是否仍可登录', '请确认 we-mp-rss 服务正在运行且 /feed/... 路径可访问']
+      : ['Check that the Feed URL belongs to the same We-MP-RSS service', 'Check that the username/password can still log in', 'Verify the We-MP-RSS service is running and the /feed/... path is reachable']
+    : isZh
+      ? ['请确认该源返回 RSS / Atom / JSON Feed', '请确认目标站点没有拦截服务端请求']
+      : ['Verify the source returns RSS / Atom / JSON Feed', 'Verify the site does not block server-side requests'];
+
+  const saveButtonLabel =
+    savingStage === 'saving'
+      ? isZh ? '保存中...' : 'Saving...'
+      : savingStage === 'validating'
+        ? isZh ? '校验中...' : 'Validating...'
+        : isZh ? '保存并校验' : 'Save & Validate';
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setSubmitFeedback(null);
     if (validationError) {
-      alert(validationError);
+      setSubmitFeedback({ success: false, message: validationError });
       return;
     }
-    setSaving(true);
+    setSavingStage('saving');
     try {
       const data = {
-        name,
+        name: name.trim(),
         source_type: sourceType,
-        api_base_url: apiBaseUrl,
+        api_base_url: apiBaseUrl.trim(),
         auth_key: buildAuthKey(),
         config: buildConfig(),
       };
-      if (source) {
-        await sourcesApi.update(source.id, data);
+      const savedSource = activeSource
+        ? await sourcesApi.update(activeSource.id, data)
+        : await sourcesApi.create(data);
+
+      setPersistedSource(savedSource);
+      setAuthPasswordSeed(nextPassword);
+      setAuthPassword(nextPassword ? MASKED_PASSWORD_PLACEHOLDER : '');
+      setAuthPasswordDirty(false);
+      setSavingStage('validating');
+      setSubmitFeedback({
+        success: true,
+        message: isZh ? '已保存，正在执行一次抓取校验...' : 'Saved. Running one fetch validation...',
+      });
+
+      const startedAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
+      const fetchResult = await sourcesApi.fetch(savedSource.id);
+      if (fetchResult.success) {
+        let refreshedSource = savedSource;
+        try {
+          refreshedSource = await sourcesApi.get(savedSource.id);
+        } catch {
+          // Use the saved response when the follow-up read is unavailable.
+        }
+        onSave(refreshedSource, fetchResult, startedAt);
+        return;
       } else {
-        await sourcesApi.create(data);
+        setSubmitFeedback({
+          success: false,
+          message: fetchResult.message || (isZh ? '已保存，但抓取校验失败' : 'Saved, but fetch validation failed'),
+          details: [
+            `${isZh ? '新增文章' : 'Articles added'}: ${fetchResult.articles_added ?? 0}`,
+            ...validationHints,
+          ],
+        });
       }
-      onSave();
-    } catch {
-      alert(source ? (isZh ? '更新失败' : 'Update failed') : (isZh ? '创建失败' : 'Create failed'));
-    } finally {
-      setSaving(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : (isZh ? '保存或校验失败' : 'Save or validation failed');
+      setSubmitFeedback({
+        success: false,
+        message,
+        details: validationHints,
+      });
     }
+    setSavingStage('idle');
   };
 
   return (
@@ -767,7 +903,7 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
       <div className="mx-4 w-full max-w-md rounded-xl bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-100 p-4">
           <h3 className="text-lg font-semibold text-gray-900">
-            {source ? (isZh ? '编辑新闻源' : 'Edit Source') : (isZh ? '添加新闻源' : 'Add Source')}
+            {activeSource ? (isZh ? '编辑新闻源' : 'Edit Source') : (isZh ? '添加新闻源' : 'Add Source')}
           </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -815,6 +951,23 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
           </div>
           {sourceType === 'we_mp_rss' && (
             <>
+              {!activeSource && authTemplateLoading && (
+                <div className="rounded-lg border border-[#c0c8cb]/20 bg-[#f8f8f6] px-3 py-2 text-xs text-[#5e5e5e]">
+                  {isZh ? '正在查找已登记的 we-mp-rss 用户...' : 'Looking for registered We-MP-RSS credentials...'}
+                </div>
+              )}
+              {!activeSource && authTemplate?.available && (
+                <div className="rounded-lg border border-[#cce1d2] bg-[#eef8f1] px-3 py-2 text-xs text-[#2f6f4f]">
+                  {isZh
+                    ? `已自动载入「${authTemplate.source_name || '已有来源'}」的用户：${authTemplate.username}`
+                    : `Loaded credentials from "${authTemplate.source_name || 'an existing source'}": ${authTemplate.username}`}
+                </div>
+              )}
+              {!activeSource && !authTemplateLoading && authTemplate && !authTemplate.available && (
+                <div className="rounded-lg border border-[#c0c8cb]/20 bg-[#f8f8f6] px-3 py-2 text-xs text-[#5e5e5e]">
+                  {isZh ? '还没有可复用的 we-mp-rss 用户，请先填写一次。' : 'No reusable We-MP-RSS credentials yet. Fill them in once.'}
+                </div>
+              )}
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">{isZh ? '用户名' : 'Username'}</label>
                 <input
@@ -838,10 +991,32 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
                 />
                 <p className="mt-1 text-xs text-gray-500">{authHelperText}</p>
                 {authConfigured && !authPasswordDirty && (
-                  <p className="mt-1 text-xs font-medium text-[#0d4656]">{isZh ? '已配置认证' : 'Auth configured'}</p>
+                  <p className="mt-1 text-xs font-medium text-[#0d4656]">
+                    {activeSource
+                      ? isZh ? '已配置认证' : 'Auth configured'
+                      : isZh ? '已加载可复用认证' : 'Reusable credentials loaded'}
+                  </p>
                 )}
               </div>
             </>
+          )}
+          {submitFeedback && (
+            <div
+              className={`rounded-lg border px-3 py-3 text-sm ${
+                submitFeedback.success
+                  ? 'border-green-200 bg-green-50 text-green-700'
+                  : 'border-red-200 bg-red-50 text-red-700'
+              }`}
+            >
+              <p className="font-medium">{submitFeedback.message}</p>
+              {submitFeedback.details && submitFeedback.details.length > 0 && (
+                <ul className="mt-2 space-y-1 text-xs">
+                  {submitFeedback.details.map((detail) => (
+                    <li key={detail}>• {detail}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
           <div className="flex justify-end gap-2 pt-2">
             <button
@@ -856,7 +1031,7 @@ function SourceModal({ source, onClose, onSave }: SourceModalProps) {
               disabled={saving}
               className="rounded-lg bg-[#0d4656] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#2c5e6e] disabled:opacity-50"
             >
-              {saving ? (isZh ? '保存中...' : 'Saving...') : (isZh ? '保存' : 'Save')}
+              {saveButtonLabel}
             </button>
           </div>
         </form>

@@ -38,20 +38,18 @@
 
 ## 当前需求池
 
-### 当前建议开发顺序（`2026-04-23` refresh）
+### 当前建议开发顺序（`2026-04-25` refresh）
 
-1. `REQ-OPS-002` + `REQ-DATA-002` + `REQ-DATA-003`
-2. `REQ-OPS-004`
-3. `REQ-FLOW-001` + `REQ-FLOW-002` + `REQ-FLOW-004`
-4. `REQ-OPS-003`
-5. `REQ-DATA-001` + `REQ-SRC-003`
-6. `REQ-SRC-001` + `REQ-UX-001` + `REQ-SRC-002`
-7. `REQ-AI-001` ~ `REQ-AI-004`
+1. `REQ-FLOW-001` + `REQ-FLOW-002` + `REQ-FLOW-004`
+2. `REQ-OPS-003`
+3. `REQ-DATA-001` + `REQ-SRC-003`
+4. `REQ-SRC-001` + `REQ-UX-001` + `REQ-SRC-002`
+5. `REQ-AI-001` ~ `REQ-AI-004`
 
 说明：
 
-- `REQ-OPS-001` 已完成并验证，因此从“下一步开发优先级”中移出
-- 当前排序以“先补可观测性和调度闭环，再接前端设置与检索闭环，最后扩治理与 AI 增强”为原则
+- `REQ-OPS-001`、`REQ-OPS-002`、`REQ-OPS-004`、`REQ-DATA-002`、`REQ-DATA-003` 已完成并验证，因此从“下一步开发优先级”中移出
+- 当前排序以“先完成检索 / 筛选 / 阅读闭环，再补任务日志页，最后扩 Source 治理与 AI 增强”为原则
 
 ### 已录入的交互与 Source 体验需求
 
@@ -90,7 +88,7 @@
 | ID | 分类 | 优先级 | 状态 | 需求 | 备注 | 关联计划 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `REQ-DATA-002` | `DATA` | P1 | `done` | 扩充 Entry / Job 的状态字段与管理语义 | 已补齐 `provider_source_id / provider_article_id`、`we_mp_rss` 正文状态字段，以及新的 Job 级 `job_runs` 数据模型与管理语义 | [2026-04-24-job-observability-and-data-model.md](superpowers/plans/2026-04-24-job-observability-and-data-model.md) |
-| `REQ-DATA-003` | `DATA` | P1 | `in_progress` | 同步扩展前后端 API 契约，使治理字段与状态模型可被前端消费 | 后端 Source / Article 契约已补出 provider id 字段，schedule 配置接口已补出 `latest_runs`，支持分钟级 `times: [\"HH:mm\"]` 调度配置，并已具备持久化与启动恢复；前端设置页与更多治理字段消费仍待继续接线 | [2026-04-24-job-observability-and-data-model.md](superpowers/plans/2026-04-24-job-observability-and-data-model.md) |
+| `REQ-DATA-003` | `DATA` | P1 | `done` | 同步扩展前后端 API 契约，使治理字段与状态模型可被前端消费 | 后端 Source / Article 契约已补出 provider id 字段，Article 响应已补出正文刷新状态字段，schedule 配置接口已补出 `latest_runs`，支持分钟级 `times: [\"HH:mm\"]` 调度配置，并已具备持久化与启动恢复；前端 API 类型、设置页最近运行状态、Sources 页 provider id 诊断展示已接线 | [2026-04-24-job-observability-and-data-model.md](superpowers/plans/2026-04-24-job-observability-and-data-model.md) |
 | `REQ-DATA-001` | `DATA` | P2 | `planned` | 扩充 Source 数据模型，补齐 `enabled / category / tags / refresh_interval / last_error` 等治理字段 | 当前仍有价值，但优先级低于任务状态 / 契约扩展这一轮基础治理工作 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-SRC-003` | `SRC` | P2 | `planned` | 在 Sources 管理页展示并编辑新增的治理字段 | 数据模型扩展后，Source 管理页需要具备相应操作入口 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 

@@ -54,6 +54,14 @@ class NewsSourceResponse(BaseModel):
     article_count: int
 
 
+class WeMpRssAuthTemplateResponse(BaseModel):
+    available: bool = False
+    source_id: Optional[int] = None
+    source_name: Optional[str] = None
+    username: str = ""
+    password: str = ""
+
+
 # Article Models
 class ArticleResponse(BaseModel):
     id: int
@@ -67,6 +75,11 @@ class ArticleResponse(BaseModel):
     author: str
     published_at: Optional[str]
     fetched_at: str
+    content_refresh_status: str = "ready"
+    content_refresh_error: Optional[str] = None
+    content_refresh_requested_at: Optional[str] = None
+    content_refresh_checked_at: Optional[str] = None
+    content_refreshed_at: Optional[str] = None
     source_name: Optional[str] = None
 
 

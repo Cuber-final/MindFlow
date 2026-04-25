@@ -15,25 +15,31 @@ class TestArticlesAPI:
                 "id": 1,
                 "source_id": 1,
                 "external_id": "mid123",
+                "provider_article_id": "wx-100",
                 "title": "测试文章1",
                 "link": "https://example.com/article/1",
                 "content": "这是文章内容...",
                 "summary": "",
                 "author": "测试源1",
                 "published_at": "2026-04-08 10:00:00",
-                "fetched_at": "2026-04-08 10:05:00"
+                "fetched_at": "2026-04-08 10:05:00",
+                "content_refresh_status": "detail_fetched",
+                "content_refresh_error": None,
             },
             {
                 "id": 2,
                 "source_id": 1,
                 "external_id": "mid456",
+                "provider_article_id": None,
                 "title": "测试文章2",
                 "link": "https://example.com/article/2",
                 "content": "这是另一篇文章内容...",
                 "summary": "这是AI生成的摘要",
                 "author": "测试源1",
                 "published_at": "2026-04-08 11:00:00",
-                "fetched_at": "2026-04-08 11:05:00"
+                "fetched_at": "2026-04-08 11:05:00",
+                "content_refresh_status": "ready",
+                "content_refresh_error": None,
             }
         ]
 
@@ -71,6 +77,9 @@ class TestArticlesAPI:
             data = response.json()
             assert len(data["items"]) == 2
             assert data["items"][0]["source_name"] == "测试源1"
+            assert data["items"][0]["provider_article_id"] == "wx-100"
+            assert data["items"][0]["content_refresh_status"] == "detail_fetched"
+            assert data["items"][0]["content_refresh_error"] is None
 
     def test_list_articles_serializes_datetime_fields(self, client, mock_sources):
         """Test listing articles when database rows contain datetime objects."""
@@ -88,6 +97,11 @@ class TestArticlesAPI:
                     "author": "Feed Source",
                     "published_at": datetime(2026, 4, 21, 12, 0, 0),
                     "fetched_at": datetime(2026, 4, 21, 12, 5, 0),
+                    "content_refresh_status": "refresh_failed",
+                    "content_refresh_error": "timeout",
+                    "content_refresh_requested_at": datetime(2026, 4, 21, 12, 6, 0),
+                    "content_refresh_checked_at": datetime(2026, 4, 21, 12, 7, 0),
+                    "content_refreshed_at": None,
                 }
             ]
             mock_sources_get.return_value = mock_sources
@@ -96,6 +110,9 @@ class TestArticlesAPI:
             data = response.json()
             assert data["items"][0]["published_at"] == "2026-04-21T12:00:00"
             assert data["items"][0]["fetched_at"] == "2026-04-21T12:05:00"
+            assert data["items"][0]["content_refresh_requested_at"] == "2026-04-21T12:06:00"
+            assert data["items"][0]["content_refresh_checked_at"] == "2026-04-21T12:07:00"
+            assert data["items"][0]["content_refreshed_at"] is None
 
     def test_list_articles_filter_by_source(self, client, mock_articles, mock_sources):
         """Test filtering articles by source_id"""
@@ -134,6 +151,8 @@ class TestArticlesAPI:
             data = response.json()
             assert data["title"] == "测试文章1"
             assert data["source_name"] == "测试源1"
+            assert data["provider_article_id"] == "wx-100"
+            assert data["content_refresh_status"] == "detail_fetched"
 
     def test_get_article_not_found(self, client):
         """Test getting non-existent article"""

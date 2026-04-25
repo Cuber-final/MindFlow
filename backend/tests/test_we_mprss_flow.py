@@ -360,10 +360,12 @@ class TestWeMpRssRefreshLifecycle:
                 "content_html": "<article><p>full content</p></article>",
             }
         )
+        ensure_source_auth_state = AsyncMock(return_value={"source": source, "changed": False})
 
         result = await refresh_article_content_and_fetch_detail(
             source=source,
             article=article,
+            ensure_source_auth_state=ensure_source_auth_state,
             request_refresh=request_refresh,
             poll_refresh_task=poll_status,
             fetch_article_detail=fetch_detail,
@@ -445,10 +447,12 @@ class TestWeMpRssRefreshLifecycle:
         }
 
         request_refresh = AsyncMock(side_effect=RuntimeError("401 unauthorized"))
+        ensure_source_auth_state = AsyncMock(return_value={"source": source, "changed": False})
 
         result = await refresh_article_content_and_fetch_detail(
             source=source,
             article=article,
+            ensure_source_auth_state=ensure_source_auth_state,
             request_refresh=request_refresh,
         )
 
@@ -482,10 +486,12 @@ class TestWeMpRssRefreshLifecycle:
                 "content_html": "<article><p>full content</p></article>",
             }
         )
+        ensure_source_auth_state = AsyncMock(return_value={"source": source, "changed": False})
 
         result = await refresh_article_content_and_fetch_detail(
             source=source,
             article=article,
+            ensure_source_auth_state=ensure_source_auth_state,
             request_refresh=request_refresh,
             poll_refresh_task=poll_status,
             fetch_article_detail=fetch_detail,
@@ -521,10 +527,12 @@ class TestWeMpRssRefreshLifecycle:
                 "content_html": "<article><p>full content</p></article>",
             }
         )
+        ensure_source_auth_state = AsyncMock(return_value={"source": source, "changed": False})
 
         result = await refresh_article_content_and_fetch_detail(
             source=source,
             article=article,
+            ensure_source_auth_state=ensure_source_auth_state,
             request_refresh=request_refresh,
             poll_refresh_task=poll_status,
             fetch_article_detail=fetch_detail,

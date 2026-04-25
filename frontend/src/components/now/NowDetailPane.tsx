@@ -57,6 +57,7 @@ export default function NowDetailPane({
   }
 
   const sourceUrl = detail.source_article_link || detail.article_link || null;
+  const headlineTitle = detail.article_title || detail.title;
 
   return (
     <article className="rounded-[32px] border border-[#c0c8cb]/15 bg-white shadow-[0_20px_60px_rgba(26,28,27,0.03)]">
@@ -69,7 +70,7 @@ export default function NowDetailPane({
           <span>{zoneLabel(detail.zone)}</span>
         </div>
 
-        <h1 className="mt-5 font-headline text-4xl leading-tight text-[#1a1c1b] md:text-5xl">{detail.title}</h1>
+        <h1 className="mt-5 font-headline text-4xl leading-tight text-[#1a1c1b] md:text-5xl">{headlineTitle}</h1>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <span className="rounded-full bg-[#0d4656]/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0d4656]">
