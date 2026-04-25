@@ -71,6 +71,7 @@ class ArticleResponse(BaseModel):
     title: str
     link: str
     content: str
+    content_html: str = ""
     summary: str
     author: str
     published_at: Optional[str]
@@ -81,6 +82,12 @@ class ArticleResponse(BaseModel):
     content_refresh_checked_at: Optional[str] = None
     content_refreshed_at: Optional[str] = None
     source_name: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+    read_at: Optional[str] = None
+    processed_at: Optional[str] = None
+    last_opened_at: Optional[str] = None
+    is_read: bool = False
+    is_processed: bool = False
 
 
 class ArticleListResponse(BaseModel):
@@ -88,6 +95,20 @@ class ArticleListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class ArticleStateUpdateRequest(BaseModel):
+    mark_read: bool = False
+    mark_processed: bool = False
+
+
+class ArticleStateResponse(BaseModel):
+    article_id: int
+    is_read: bool
+    is_processed: bool
+    read_at: Optional[str] = None
+    processed_at: Optional[str] = None
+    last_opened_at: Optional[str] = None
 
 
 class NowListItemResponse(BaseModel):

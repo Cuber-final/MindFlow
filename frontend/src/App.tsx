@@ -7,6 +7,7 @@ import Settings from './pages/Settings';
 import Newsletter from './pages/Newsletter';
 import InterestSettings from './pages/InterestSettings';
 import Now from './pages/Now';
+import Articles from './pages/Articles';
 
 export default function App() {
   return (
@@ -28,6 +29,8 @@ export default function App() {
               <Route path="/daily-digest" element={<Newsletter />} />
               <Route path="/now" element={<Now />} />
               <Route path="/now/:anchorId" element={<Now />} />
+              <Route path="/articles" element={<Articles />} />
+              <Route path="/articles/:articleId" element={<Articles />} />
               <Route path="/interests" element={<InterestSettings />} />
               <Route path="/sources" element={<Sources />} />
               <Route path="/settings" element={<Settings />} />

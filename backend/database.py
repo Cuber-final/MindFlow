@@ -201,17 +201,157 @@ async def update_source_fetch_time(source_id: int, article_count: int):
 
 async def get_articles(
     source_id: Optional[int] = None,
+    q: Optional[str] = None,
+    tag: Optional[str] = None,
+    status: Optional[str] = None,
+    content_status: Optional[str] = None,
+    published_from: Optional[datetime] = None,
+    published_to: Optional[datetime] = None,
     limit: int = 50,
     offset: int = 0
 ) -> List[Dict[str, Any]]:
-    """Get articles, optionally filtered by source_id."""
+    """Get articles, optionally filtered by search, source, tags, date, and state."""
     async with get_db() as session:
-        query = select(Article).order_by(Article.fetched_at.desc()).limit(limit).offset(offset)
-        if source_id is not None:
-            query = query.where(Article.source_id == source_id)
+        filters = _build_article_filters(
+            source_id=source_id,
+            q=q,
+            tag=tag,
+            status=status,
+            content_status=content_status,
+            published_from=published_from,
+            published_to=published_to,
+        )
+        query = (
+            select(Article)
+            .where(*filters)
+            .order_by(
+                func.coalesce(Article.published_at, Article.fetched_at).desc(),
+                Article.id.desc(),
+            )
+            .limit(limit)
+            .offset(offset)
+        )
         result = await session.execute(query)
         articles = result.scalars().all()
-        return [a.__dict__ for a in articles]
+        article_ids = [article.id for article in articles]
+        tag_map = await _get_article_tag_map(session, article_ids)
+
+        serialized = []
+        for article in articles:
+            item = article.__dict__.copy()
+            item["tags"] = tag_map.get(article.id, [])
+            serialized.append(item)
+        return serialized
+
+
+async def count_articles(
+    source_id: Optional[int] = None,
+    q: Optional[str] = None,
+    tag: Optional[str] = None,
+    status: Optional[str] = None,
+    content_status: Optional[str] = None,
+    published_from: Optional[datetime] = None,
+    published_to: Optional[datetime] = None,
+) -> int:
+    """Count articles matching the same filters as get_articles."""
+    async with get_db() as session:
+        filters = _build_article_filters(
+            source_id=source_id,
+            q=q,
+            tag=tag,
+            status=status,
+            content_status=content_status,
+            published_from=published_from,
+            published_to=published_to,
+        )
+        result = await session.execute(
+            select(func.count()).select_from(Article).where(*filters)
+        )
+        return int(result.scalar_one() or 0)
+
+
+def _build_article_filters(
+    *,
+    source_id: Optional[int] = None,
+    q: Optional[str] = None,
+    tag: Optional[str] = None,
+    status: Optional[str] = None,
+    content_status: Optional[str] = None,
+    published_from: Optional[datetime] = None,
+    published_to: Optional[datetime] = None,
+):
+    filters = []
+
+    if source_id is not None:
+        filters.append(Article.source_id == source_id)
+
+    normalized_q = (q or "").strip()
+    if normalized_q:
+        pattern = f"%{normalized_q}%"
+        filters.append(
+            or_(
+                Article.title.ilike(pattern),
+                Article.content.ilike(pattern),
+                Article.summary.ilike(pattern),
+                Article.author.ilike(pattern),
+                Article.link.ilike(pattern),
+            )
+        )
+
+    time_expr = func.coalesce(Article.published_at, Article.fetched_at)
+    if published_from is not None:
+        filters.append(time_expr >= published_from)
+    if published_to is not None:
+        filters.append(time_expr < published_to)
+
+    normalized_tag = (tag or "").strip()
+    if normalized_tag:
+        filters.append(
+            select(AnchorPoint.id)
+            .where(
+                AnchorPoint.article_id == Article.id,
+                AnchorPoint.tags.contains([normalized_tag]),
+            )
+            .exists()
+        )
+
+    normalized_status = (status or "").strip()
+    if normalized_status == "unread":
+        filters.append(Article.read_at.is_(None))
+    elif normalized_status == "read":
+        filters.append(Article.read_at.is_not(None))
+    elif normalized_status == "processed":
+        filters.append(Article.processed_at.is_not(None))
+    elif normalized_status == "unprocessed":
+        filters.append(Article.processed_at.is_(None))
+    elif normalized_status:
+        filters.append(Article.content_refresh_status == normalized_status)
+
+    normalized_content_status = (content_status or "").strip()
+    if normalized_content_status:
+        filters.append(Article.content_refresh_status == normalized_content_status)
+
+    return filters
+
+
+async def _get_article_tag_map(session: AsyncSession, article_ids: List[int]) -> Dict[int, List[str]]:
+    if not article_ids:
+        return {}
+
+    result = await session.execute(
+        select(AnchorPoint.article_id, AnchorPoint.tags)
+        .where(AnchorPoint.article_id.in_(article_ids))
+    )
+    tag_map: Dict[int, List[str]] = {article_id: [] for article_id in article_ids}
+    for article_id, raw_tags in result.all():
+        if not isinstance(raw_tags, list):
+            continue
+        current = tag_map.setdefault(article_id, [])
+        for raw_tag in raw_tags:
+            normalized_tag = str(raw_tag).strip()
+            if normalized_tag and normalized_tag not in current:
+                current.append(normalized_tag)
+    return tag_map
 
 
 async def get_article_by_id(article_id: int) -> Optional[Dict[str, Any]]:
@@ -221,7 +361,12 @@ async def get_article_by_id(article_id: int) -> Optional[Dict[str, Any]]:
             select(Article).where(Article.id == article_id)
         )
         article = result.scalar_one_or_none()
-        return article.__dict__ if article else None
+        if not article:
+            return None
+        item = article.__dict__.copy()
+        tag_map = await _get_article_tag_map(session, [article.id])
+        item["tags"] = tag_map.get(article.id, [])
+        return item
 
 
 async def get_article_by_external_id(
@@ -621,6 +766,42 @@ async def update_article_workbench_state_by_anchor(
 
         return {
             "anchor_id": anchor_id,
+            "article_id": article.id,
+            "read_at": article.read_at,
+            "processed_at": article.processed_at,
+            "last_opened_at": article.last_opened_at,
+        }
+
+
+async def update_article_workbench_state_by_article_id(
+    article_id: int,
+    *,
+    mark_read: bool = False,
+    mark_processed: bool = False,
+) -> Optional[Dict[str, Any]]:
+    """Update reading/processing state for a search result article."""
+    async with get_db() as session:
+        result = await session.execute(
+            select(Article).where(Article.id == article_id)
+        )
+        article = result.scalar_one_or_none()
+        if not article:
+            return None
+
+        now = datetime.utcnow()
+        if mark_read and article.read_at is None:
+            article.read_at = now
+        if mark_processed:
+            if article.processed_at is None:
+                article.processed_at = now
+            if article.read_at is None:
+                article.read_at = now
+        if mark_read or mark_processed:
+            article.last_opened_at = now
+
+        await session.flush()
+
+        return {
             "article_id": article.id,
             "read_at": article.read_at,
             "processed_at": article.processed_at,

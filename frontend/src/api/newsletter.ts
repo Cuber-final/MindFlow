@@ -143,6 +143,7 @@ export interface Article {
   title: string;
   link: string;
   content: string;
+  content_html: string;
   summary: string;
   author: string;
   published_at: string | null;
@@ -153,6 +154,12 @@ export interface Article {
   content_refresh_checked_at?: string | null;
   content_refreshed_at?: string | null;
   source_name?: string | null;
+  tags: string[];
+  read_at?: string | null;
+  processed_at?: string | null;
+  last_opened_at?: string | null;
+  is_read: boolean;
+  is_processed: boolean;
 }
 
 export interface ArticleListResponse {
@@ -160,6 +167,32 @@ export interface ArticleListResponse {
   total: number;
   limit: number;
   offset: number;
+}
+
+export interface ArticleSearchParams {
+  q?: string;
+  source_id?: number;
+  published_from?: string;
+  published_to?: string;
+  tag?: string;
+  status?: string;
+  content_status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ArticleStateUpdatePayload {
+  mark_read?: boolean;
+  mark_processed?: boolean;
+}
+
+export interface ArticleStateResponse {
+  article_id: number;
+  is_read: boolean;
+  is_processed: boolean;
+  read_at?: string | null;
+  processed_at?: string | null;
+  last_opened_at?: string | null;
 }
 
 // === Digest Types ===
@@ -416,9 +449,15 @@ export const sourcesApi = {
 
 // === Articles API ===
 export const articlesApi = {
-  list: (params?: { source_id?: number; limit?: number; offset?: number }) => {
+  list: (params?: ArticleSearchParams) => {
     const searchParams = new URLSearchParams();
+    if (params?.q) searchParams.set('q', params.q);
     if (params?.source_id) searchParams.set('source_id', String(params.source_id));
+    if (params?.published_from) searchParams.set('published_from', params.published_from);
+    if (params?.published_to) searchParams.set('published_to', params.published_to);
+    if (params?.tag) searchParams.set('tag', params.tag);
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.content_status) searchParams.set('content_status', params.content_status);
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.offset) searchParams.set('offset', String(params.offset));
     const query = searchParams.toString();
@@ -426,6 +465,12 @@ export const articlesApi = {
   },
 
   get: (id: number) => fetchApi<Article>(`/articles/${id}`),
+
+  updateState: (id: number, data: ArticleStateUpdatePayload) =>
+    fetchApi<ArticleStateResponse>(`/articles/${id}/state`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 
   summarize: (id: number) =>
     fetchApi<{ success: boolean; summary: string }>(`/articles/${id}/summarize`, {

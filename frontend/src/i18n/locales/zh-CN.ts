@@ -10,10 +10,11 @@ const zhCN: TranslationDictionary = {
   nav: {
     dailyDigest: '每日简报',
     now: 'Now 工作台',
+    articles: '文章',
     interests: '兴趣',
     sources: '信源',
     settings: '设置',
-    searchPlaceholder: '搜索洞察...',
+    searchPlaceholder: '搜索文章...',
     curatedBrief: '精选每日简报',
     help: '帮助',
     privacy: '隐私',

@@ -10,10 +10,11 @@ const enUS: TranslationDictionary = {
   nav: {
     dailyDigest: 'Daily Digest',
     now: 'Now',
+    articles: 'Articles',
     interests: 'Interests',
     sources: 'Sources',
     settings: 'Settings',
-    searchPlaceholder: 'Search insights...',
+    searchPlaceholder: 'Search articles...',
     curatedBrief: 'Curated Daily Brief',
     help: 'Help',
     privacy: 'Privacy',

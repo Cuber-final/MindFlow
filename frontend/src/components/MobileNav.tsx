@@ -7,6 +7,7 @@ export default function MobileNav() {
   const navItems = [
     { path: '/daily-digest', label: t('nav.dailyDigest'), icon: 'auto_awesome' },
     { path: '/now', label: t('nav.now'), icon: 'dashboard_customize' },
+    { path: '/articles', label: t('nav.articles'), icon: 'article' },
     { path: '/interests', label: t('nav.interests'), icon: 'label_important' },
     { path: '/sources', label: t('nav.sources'), icon: 'rss_feed' },
     { path: '/settings', label: t('nav.settings'), icon: 'settings_suggest' },

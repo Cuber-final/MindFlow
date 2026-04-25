@@ -78,9 +78,9 @@
 
 | ID | 分类 | 优先级 | 状态 | 需求 | 备注 | 关联计划 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `REQ-FLOW-001` | `FLOW` | P1 | `planned` | 补齐文章搜索能力 | 顶部搜索框目前未接线 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
-| `REQ-FLOW-002` | `FLOW` | P1 | `planned` | 支持时间、来源、标签、状态等多维筛选 | 当前文章列表过滤能力明显不足 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
-| `REQ-FLOW-004` | `FLOW` | P1 | `planned` | 为搜索 / 筛选结果补齐可消费的阅读入口与结果闭环 | 应与搜索 / 筛选同一波次推进，避免只做“能查不能读”的半闭环 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
+| `REQ-FLOW-001` | `FLOW` | P1 | `done` | 补齐文章搜索能力 | 顶部搜索框已接到文章检索页，后端 `/api/articles` 支持关键词搜索 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
+| `REQ-FLOW-002` | `FLOW` | P1 | `done` | 支持时间、来源、标签、状态等多维筛选 | 文章检索已支持发布时间、来源、锚点标签、阅读状态与正文刷新状态组合筛选 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
+| `REQ-FLOW-004` | `FLOW` | P1 | `done` | 为搜索 / 筛选结果补齐可消费的阅读入口与结果闭环 | 搜索结果可进入文章阅读面，并支持打开原文、标记已读与标记已处理 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 | `REQ-FLOW-003` | `FLOW` | P2 | `planned` | 增加导出能力 | 属于 PRD 范围内的内容输出能力，但优先级低于检索与筛选闭环 | [2026-04-22-plan-draft.md](superpowers/plans/2026-04-22-plan-draft.md) |
 
 #### 平台化数据模型与治理
